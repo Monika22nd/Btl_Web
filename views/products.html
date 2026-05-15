@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Sản phẩm - TechWorld{% endblock %}
+{% block content %}
+<section class="container catalog-layout">
+  <aside class="filter-panel">
+    <h2>Bộ lọc</h2>
+    <form method="get" action="/san-pham">
+      <label>Từ khóa</label>
+      <input name="q" value="{{ q if q is defined else '' }}" placeholder="Tên sản phẩm">
+      <label>Danh mục</label>
+      {% for category in categories if categories is defined %}
+        <label class="check-row"><input type="checkbox" name="category" value="{{ category.slug }}"> {{ category.name }}</label>
+      {% endfor %}
+      <label>Thương hiệu</label>
+      {% for brand in brands if brands is defined %}
+        <label class="check-row"><input type="checkbox" name="brand" value="{{ brand.slug }}"> {{ brand.name }}</label>
+      {% endfor %}
+      <label>Khoảng giá</label>
+      <div class="price-range">
+        <input name="min_price" type="number" placeholder="Từ">
+        <input name="max_price" type="number" placeholder="Đến">
+      </div>
+      <button class="btn btn-primary" type="submit">Áp dụng</button>
+    </form>
+  </aside>
+  <section class="catalog-main">
+    <div class="catalog-toolbar">
+      <div>
+        <h1>{{ heading if heading is defined else "Tất cả sản phẩm" }}</h1>
+        <p>{{ total if total is defined else (products|length if products is defined else 0) }} sản phẩm phù hợp</p>
+      </div>
+      <form method="get">
+        <select name="sort" onchange="this.form.submit()">
+          <option value="">Sắp xếp</option>
+          <option value="price_asc">Giá thấp đến cao</option>
+          <option value="price_desc">Giá cao đến thấp</option>
+          <option value="newest">Mới nhất</option>
+        </select>
+      </form>
+    </div>
+    <div class="product-grid">
+      {% for product in products if products is defined %}
+        {% include "partials/product_card.html" %}
+      {% else %}
+        <p class="empty-state">Chưa có sản phẩm để hiển thị.</p>
+      {% endfor %}
+    </div>
+    {% if pages is defined and pages > 1 %}
+      <nav class="pagination">
+        {% for p in range(1, pages + 1) %}
+          <a class="{{ 'active' if p == page else '' }}" href="?page={{ p }}">{{ p }}</a>
+        {% endfor %}
+      </nav>
+    {% endif %}
+  </section>
+</section>
+{% endblock %}

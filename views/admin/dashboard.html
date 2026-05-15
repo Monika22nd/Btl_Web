@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Admin - TechWorld{% endblock %}
+{% block content %}
+<section class="container admin-shell">
+  <h1>Bảng điều khiển</h1>
+  <div class="stats-grid">
+    <article><span>Sản phẩm</span><strong>{{ product_count if product_count is defined else 0 }}</strong></article>
+    <article><span>Đơn hàng</span><strong>{{ order_count if order_count is defined else 0 }}</strong></article>
+    <article><span>Doanh thu</span><strong>{{ "{:,.0f}".format(revenue if revenue is defined else 0).replace(",", ".") }}đ</strong></article>
+  </div>
+  <div class="admin-table">
+    <div class="section-heading"><h2>Đơn gần đây</h2><a class="btn btn-outline" href="/admin/san-pham/them">Thêm sản phẩm</a></div>
+    <table>
+      <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Trạng thái</th><th>Tổng tiền</th></tr></thead>
+      <tbody>
+        {% for order in recent_orders if recent_orders is defined %}
+          <tr><td>#{{ order.id }}</td><td>{{ order.user.full_name }}</td><td>{{ order.status }}</td><td>{{ "{:,.0f}".format(order.total).replace(",", ".") }}đ</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

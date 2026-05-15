@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Giỏ hàng - TechWorld{% endblock %}
+{% block content %}
+<section class="container cart-layout">
+  <div class="cart-list">
+    <h1>Giỏ hàng</h1>
+    {% for item in cart_items if cart_items is defined %}
+      <article class="cart-item">
+        <img src="{{ item.product.image_url or '/static/images/product-placeholder.svg' }}" alt="{{ item.product.name }}">
+        <div>
+          <h2>{{ item.product.name }}</h2>
+          <p>{{ "{:,.0f}".format(item.product.price).replace(",", ".") }}đ</p>
+        </div>
+        <form class="qty-control" action="/gio-hang/cap-nhat/{{ item.id }}" method="post">
+          <button type="button" data-qty-minus>-</button>
+          <input name="quantity" value="{{ item.quantity }}" min="1" type="number">
+          <button type="button" data-qty-plus>+</button>
+        </form>
+        <strong>{{ "{:,.0f}".format(item.product.price * item.quantity).replace(",", ".") }}đ</strong>
+        <form action="/gio-hang/xoa/{{ item.id }}" method="post">
+          <button class="remove-btn" type="submit">Xóa</button>
+        </form>
+      </article>
+    {% else %}
+      <p class="empty-state">Giỏ hàng đang trống.</p>
+    {% endfor %}
+  </div>
+  <aside class="summary-box">
+    <h2>Tạm tính</h2>
+    <div><span>Tổng tiền</span><strong>{{ "{:,.0f}".format(cart_total if cart_total is defined else 0).replace(",", ".") }}đ</strong></div>
+    <a class="btn btn-primary btn-large" href="/thanh-toan">Thanh toán</a>
+    <a class="btn btn-outline" href="/san-pham">Tiếp tục mua sắm</a>
+  </aside>
+</section>
+{% endblock %}

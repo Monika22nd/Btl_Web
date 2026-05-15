@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Đăng nhập - TechWorld{% endblock %}
+{% block content %}
+<section class="auth-shell">
+  <form class="auth-card" action="/dang-nhap" method="post">
+    <h1>Đăng nhập</h1>
+    <label>Email</label>
+    <input name="email" type="email" required>
+    <label>Mật khẩu</label>
+    <input name="password" type="password" required>
+    <button class="btn btn-primary btn-large" type="submit">Đăng nhập</button>
+    <p>Chưa có tài khoản? <a href="/dang-ky">Đăng ký</a></p>
+  </form>
+</section>
+{% endblock %}

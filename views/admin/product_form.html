@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Sản phẩm admin - TechWorld{% endblock %}
+{% block content %}
+<section class="container admin-shell">
+  <form class="admin-form" method="post">
+    <h1>{{ "Sửa sản phẩm" if product is defined and product else "Thêm sản phẩm" }}</h1>
+    <label>Tên sản phẩm</label>
+    <input name="name" required value="{{ product.name if product is defined and product else '' }}">
+    <label>Giá bán</label>
+    <input name="price" type="number" required value="{{ product.price if product is defined and product else '' }}">
+    <label>Giá gốc</label>
+    <input name="original_price" type="number" value="{{ product.original_price if product is defined and product else '' }}">
+    <label>Ảnh sản phẩm</label>
+    <input name="image_url" value="{{ product.image_url if product is defined and product else '' }}">
+    <label>Mô tả</label>
+    <textarea name="description">{{ product.description if product is defined and product else '' }}</textarea>
+    <label>Tồn kho</label>
+    <input name="stock" type="number" value="{{ product.stock if product is defined and product else 0 }}">
+    <button class="btn btn-primary btn-large" type="submit">Lưu sản phẩm</button>
+  </form>
+</section>
+{% endblock %}

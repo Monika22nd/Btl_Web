@@ -1,0 +1,24 @@
+{% set discount = (((product.original_price - product.price) / product.original_price * 100) | round | int) if product.original_price is defined and product.original_price else 0 %}
+<article class="product-card">
+  <a class="product-image" href="/san-pham/{{ product.slug }}">
+    {% if product.image_url is defined and product.image_url %}
+      <img src="{{ product.image_url }}" alt="{{ product.name }}">
+    {% else %}
+      <span>{{ product.name[:2] }}</span>
+    {% endif %}
+    {% if discount > 0 %}<em>-{{ discount }}%</em>{% endif %}
+  </a>
+  <div class="product-body">
+    <a class="product-name" href="/san-pham/{{ product.slug }}">{{ product.name }}</a>
+    <div class="price-line">
+      <strong>{{ "{:,.0f}".format(product.price).replace(",", ".") }}đ</strong>
+      {% if product.original_price is defined and product.original_price %}
+        <del>{{ "{:,.0f}".format(product.original_price).replace(",", ".") }}đ</del>
+      {% endif %}
+    </div>
+    <div class="rating">★ {{ product.rating if product.rating is defined else "4.8" }} <span>({{ product.review_count if product.review_count is defined else 0 }})</span></div>
+    <form action="/gio-hang/them/{{ product.id }}" method="post">
+      <button class="btn btn-cart" type="submit" data-add-cart>Thêm vào giỏ</button>
+    </form>
+  </div>
+</article>

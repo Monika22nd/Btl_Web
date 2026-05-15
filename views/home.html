@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}TechWorld - Mua sắm công nghệ{% endblock %}
+{% block content %}
+{% set featured = featured_products if featured_products is defined else [] %}
+{% set deal_items = deals if deals is defined else featured %}
+
+<section class="container home-shell">
+  <div class="hero-carousel" data-carousel>
+    <article class="hero-slide is-active">
+      <div>
+        <p class="eyebrow">Ưu đãi cuối tuần</p>
+        <h1>Điện thoại mới, quà tặng thật dùng được</h1>
+        <p>Giảm trực tiếp, trả góp linh hoạt và giao nhanh trong ngày với các sản phẩm còn hàng.</p>
+        <a class="btn btn-primary" href="/san-pham">Xem sản phẩm</a>
+      </div>
+      <div class="hero-device">16 Pro</div>
+    </article>
+    <article class="hero-slide">
+      <div>
+        <p class="eyebrow">Laptop học tập - làm việc</p>
+        <h1>Hiệu năng gọn nhẹ cho lịch làm việc dày</h1>
+        <p>Chọn nhanh theo nhu cầu, so cấu hình rõ ràng, nút mua đặt đúng nơi dễ bấm.</p>
+        <a class="btn btn-primary" href="/danh-muc/laptop">Mua laptop</a>
+      </div>
+      <div class="hero-device hero-laptop">M3</div>
+    </article>
+    <article class="hero-slide">
+      <div>
+        <p class="eyebrow">Phụ kiện chính hãng</p>
+        <h1>Sạc, tai nghe, đồng hồ đủ cho một hệ sinh thái</h1>
+        <p>Thiết kế khác màu TGDD nhưng giữ thói quen thao tác quen thuộc.</p>
+        <a class="btn btn-primary" href="/danh-muc/phu-kien">Xem phụ kiện</a>
+      </div>
+      <div class="hero-device hero-audio">Pods</div>
+    </article>
+    <div class="carousel-dots" data-carousel-dots></div>
+  </div>
+</section>
+
+<section class="container section">
+  <div class="section-heading">
+    <h2>Sản phẩm nổi bật</h2>
+    <a href="/san-pham">Xem tất cả</a>
+  </div>
+  <div class="product-row">
+    {% for product in featured %}
+      {% include "partials/product_card.html" %}
+    {% else %}
+      {% for name in ["iPhone 16 Pro Max", "Galaxy S25 Ultra", "MacBook Air M3", "AirPods Pro"] %}
+        {% set product = {'id': loop.index, 'name': name, 'slug': name|lower|replace(' ','-'), 'price': 24990000, 'original_price': 28990000, 'rating': 4.8, 'review_count': 124, 'image_url': ''} %}
+        {% include "partials/product_card.html" %}
+      {% endfor %}
+    {% endfor %}
+  </div>
+</section>
+
+<section class="container section">
+  <div class="section-heading">
+    <h2>Khuyến mãi hot</h2>
+    <a href="/san-pham?sort=deal">Săn deal</a>
+  </div>
+  <div class="product-grid">
+    {% for product in deal_items[:8] %}
+      {% include "partials/product_card.html" %}
+    {% else %}
+      {% for name in ["Xiaomi 15 Pro", "JBL Flip 6", "Garmin Venu 3", "Sạc dự phòng Anker"] %}
+        {% set product = {'id': loop.index, 'name': name, 'slug': name|lower|replace(' ','-'), 'price': 3990000, 'original_price': 4990000, 'rating': 4.6, 'review_count': 88, 'image_url': ''} %}
+        {% include "partials/product_card.html" %}
+      {% endfor %}
+    {% endfor %}
+  </div>
+</section>
+
+{% if category_sections is defined %}
+  {% for section in category_sections %}
+    <section class="container section">
+      <div class="section-heading">
+        <h2>{{ section.category.name }}</h2>
+        <a href="/danh-muc/{{ section.category.slug }}">Xem thêm</a>
+      </div>
+      <div class="product-grid">
+        {% for product in section.products[:4] %}
+          {% include "partials/product_card.html" %}
+        {% endfor %}
+      </div>
+    </section>
+  {% endfor %}
+{% endif %}
+{% endblock %}

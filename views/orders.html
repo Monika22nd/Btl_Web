@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Đơn hàng - TechWorld{% endblock %}
+{% block content %}
+<section class="container section">
+  <h1>Lịch sử đơn hàng</h1>
+  <div class="order-list">
+    {% for order in orders if orders is defined %}
+      <article class="order-card">
+        <div>
+          <h2>Đơn #{{ order.id }}</h2>
+          <p>{{ order.created_at.strftime('%d/%m/%Y') if order.created_at else '' }}</p>
+        </div>
+        <span class="status-badge">{{ order.status }}</span>
+        <strong>{{ "{:,.0f}".format(order.total).replace(",", ".") }}đ</strong>
+        <a class="btn btn-outline" href="/don-hang/{{ order.id }}">Chi tiết</a>
+      </article>
+    {% else %}
+      <p class="empty-state">Bạn chưa có đơn hàng nào.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} - TechWorld{% endblock %}
+{% block content %}
+<section class="container detail-layout">
+  <div class="detail-gallery">
+    {% if product.image_url %}
+      <img src="{{ product.image_url }}" alt="{{ product.name }}">
+    {% else %}
+      <div class="placeholder-device">{{ product.name[:2] }}</div>
+    {% endif %}
+  </div>
+  <div class="detail-info">
+    <p class="eyebrow">{{ product.brand.name if product.brand is defined and product.brand else "TechWorld" }}</p>
+    <h1>{{ product.name }}</h1>
+    <div class="rating">★ {{ product.rating }} <span>({{ product.review_count }} đánh giá)</span></div>
+    <div class="detail-price">
+      <strong>{{ "{:,.0f}".format(product.price).replace(",", ".") }}đ</strong>
+      {% if product.original_price %}
+        <del>{{ "{:,.0f}".format(product.original_price).replace(",", ".") }}đ</del>
+      {% endif %}
+    </div>
+    <p class="stock {{ 'in-stock' if product.stock > 0 else 'out-stock' }}">{{ "Còn hàng" if product.stock > 0 else "Tạm hết hàng" }}</p>
+    <div class="buy-actions">
+      <form action="/gio-hang/them/{{ product.id }}" method="post">
+        <button class="btn btn-primary btn-large" type="submit" data-add-cart>Thêm vào giỏ hàng</button>
+      </form>
+      <a class="btn btn-outline btn-large" href="/thanh-toan?product={{ product.id }}">Mua ngay</a>
+    </div>
+    <div class="service-box">
+      <span>Đổi trả 30 ngày</span>
+      <span>Trả góp 0%</span>
+      <span>Giao nhanh 2 giờ</span>
+    </div>
+  </div>
+</section>
+
+<section class="container section detail-extra">
+  <div class="spec-card">
+    <h2>Thông số kỹ thuật</h2>
+    <table>
+      {% for spec in product.specs if product.specs is defined %}
+        <tr><th>{{ spec.spec_name }}</th><td>{{ spec.spec_value }}</td></tr>
+      {% else %}
+        <tr><th>Màn hình</th><td>Thông tin đang cập nhật</td></tr>
+        <tr><th>Bảo hành</th><td>12 tháng chính hãng</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  <div class="description-card">
+    <h2>Mô tả sản phẩm</h2>
+    <p>{{ product.description or "Sản phẩm chính hãng, đầy đủ phụ kiện và bảo hành theo chính sách TechWorld." }}</p>
+  </div>
+</section>
+
+<section class="container section">
+  <div class="section-heading"><h2>Sản phẩm tương tự</h2></div>
+  <div class="product-row">
+    {% for product in related_products if related_products is defined %}
+      {% include "partials/product_card.html" %}
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
