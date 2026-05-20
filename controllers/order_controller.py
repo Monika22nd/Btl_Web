@@ -20,6 +20,7 @@ def _session_ctx(request: Request, db: Session) -> dict:
     return {
         "user_id": user_id,
         "user_name": request.session.get("user_name"),
+        "is_admin": request.session.get("is_admin", False),
         "cart_count": cart_count,
         "APP_NAME": APP_NAME,
     }

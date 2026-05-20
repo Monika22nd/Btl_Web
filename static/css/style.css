@@ -824,6 +824,12 @@ textarea {
 
 .admin-table { padding: 20px; }
 
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .empty-state {
   padding: 24px;
   background: #fff;

@@ -20,7 +20,13 @@ def _session_ctx(request: Request, db: Session) -> dict:
     cart_count = 0
     if user_id:
         cart_count = db.query(CartItem).filter(CartItem.user_id == user_id).count()
-    return {"user_id": user_id, "user_name": user_name, "cart_count": cart_count, "APP_NAME": APP_NAME}
+    return {
+        "user_id": user_id,
+        "user_name": user_name,
+        "is_admin": request.session.get("is_admin", False),
+        "cart_count": cart_count,
+        "APP_NAME": APP_NAME,
+    }
 
 
 async def _read_api_data(request: Request) -> dict:

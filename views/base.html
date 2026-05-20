@@ -42,8 +42,14 @@
           <span class="badge" id="cart-count">{{ cart_count if cart_count is defined else 0 }}</span>
         </a>
         {% if current_user is defined and current_user %}
+          {% if current_user.is_admin %}
+            <a class="action-pill" href="/admin/">Admin</a>
+          {% endif %}
           <a class="action-pill" href="/tai-khoan">{{ current_user.full_name or current_user.email }}</a>
         {% elif user_id is defined and user_id %}
+          {% if is_admin is defined and is_admin %}
+            <a class="action-pill" href="/admin/">Admin</a>
+          {% endif %}
           <a class="action-pill" href="/tai-khoan">{{ user_name or 'Tài khoản' }}</a>
           <a class="action-pill" href="/dang-xuat">Đăng xuất</a>
         {% else %}

@@ -20,9 +20,16 @@ def _require_admin(request: Request):
 
 
 def _admin_ctx(request: Request, db: Session) -> dict:
+    user_id = request.session.get("user_id")
+    cart_count = 0
+    if user_id:
+        cart_count = db.query(CartItem).filter(CartItem.user_id == user_id).count()
     return {
         "APP_NAME": APP_NAME,
+        "user_id": user_id,
         "user_name": request.session.get("user_name"),
+        "is_admin": request.session.get("is_admin", False),
+        "cart_count": cart_count,
         "flash": request.session.pop("flash", None),
     }
 

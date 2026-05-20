@@ -2,7 +2,23 @@
 {% block title %}Admin - TechWorld{% endblock %}
 {% block content %}
 <section class="container admin-shell">
-  <h1>Bảng điều khiển</h1>
+  <div class="section-heading">
+    <h1>Admin panel</h1>
+    <a class="btn btn-outline" href="/">Xem website</a>
+  </div>
+  <nav class="admin-table">
+    <div class="section-heading">
+      <h2>Quản lý</h2>
+    </div>
+    <div class="admin-actions">
+      <a class="btn btn-primary" href="/admin/products">Sản phẩm</a>
+      <a class="btn btn-outline" href="/admin/products/new">Thêm sản phẩm</a>
+      <a class="btn btn-outline" href="/admin/orders">Đơn hàng</a>
+      <a class="btn btn-outline" href="/admin/users">Người dùng</a>
+      <a class="btn btn-outline" href="/admin/categories">Danh mục</a>
+      <a class="btn btn-outline" href="/admin/brands">Thương hiệu</a>
+    </div>
+  </nav>
   <div class="stats-grid">
     <article><span>Sản phẩm</span><strong>{{ total_products if total_products is defined else 0 }}</strong></article>
     <article><span>Đơn hàng</span><strong>{{ total_orders if total_orders is defined else 0 }}</strong></article>
