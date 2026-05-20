@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Quản lý danh mục - TechWorld{% endblock %}
+{% block content %}
+<section class="container admin-shell">
+  <form class="admin-form" action="/admin/categories/new" method="post">
+    <h1>Danh mục</h1>
+    {% if error %}<p class="empty-state">{{ error }}</p>{% endif %}
+    <label>Tên danh mục</label><input name="name" required>
+    <label>Slug</label><input name="slug" required>
+    <label>Icon</label><input name="icon">
+    <label>Thứ tự</label><input name="display_order" type="number" value="0">
+    <button class="btn btn-primary" type="submit">Thêm danh mục</button>
+  </form>
+  <div class="admin-table">
+    <table>
+      <thead><tr><th>Tên</th><th>Slug</th><th>Thứ tự</th></tr></thead>
+      <tbody>{% for category in categories %}<tr><td>{{ category.name }}</td><td>{{ category.slug }}</td><td>{{ category.display_order }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

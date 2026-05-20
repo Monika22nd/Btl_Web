@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Quản lý người dùng - TechWorld{% endblock %}
+{% block content %}
+<section class="container admin-shell">
+  <h1>Quản lý người dùng</h1>
+  <div class="admin-table">
+    <table>
+      <thead><tr><th>Họ tên</th><th>Email</th><th>Quyền</th><th></th></tr></thead>
+      <tbody>
+        {% for user in users %}
+          <tr>
+            <td>{{ user.full_name }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ "Admin" if user.is_admin else "Khách" }}</td>
+            <td>
+              <form action="/admin/users/{{ user.id }}/toggle-admin" method="post">
+                <button class="btn btn-outline" type="submit">Đổi quyền</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4">Chưa có người dùng.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

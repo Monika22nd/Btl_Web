@@ -4,8 +4,10 @@
 <section class="auth-shell">
   <form class="auth-card" action="/dang-nhap" method="post">
     <h1>Đăng nhập</h1>
+    {% if error %}<p class="empty-state">{{ error }}</p>{% endif %}
+    <input name="next" type="hidden" value="{{ next if next is defined else '/' }}">
     <label>Email</label>
-    <input name="email" type="email" required>
+    <input name="email" type="email" required value="{{ email if email is defined else '' }}">
     <label>Mật khẩu</label>
     <input name="password" type="password" required>
     <button class="btn btn-primary btn-large" type="submit">Đăng nhập</button>

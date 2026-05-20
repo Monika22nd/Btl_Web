@@ -4,8 +4,11 @@
 <section class="container admin-shell">
   <form class="admin-form" method="post">
     <h1>{{ "Sửa sản phẩm" if product is defined and product else "Thêm sản phẩm" }}</h1>
+    {% if error %}<p class="empty-state">{{ error }}</p>{% endif %}
     <label>Tên sản phẩm</label>
     <input name="name" required value="{{ product.name if product is defined and product else '' }}">
+    <label>Slug</label>
+    <input name="slug" required value="{{ product.slug if product is defined and product else '' }}" placeholder="iphone-16-pro-max">
     <label>Giá bán</label>
     <input name="price" type="number" required value="{{ product.price if product is defined and product else '' }}">
     <label>Giá gốc</label>
@@ -16,6 +19,28 @@
     <textarea name="description">{{ product.description if product is defined and product else '' }}</textarea>
     <label>Tồn kho</label>
     <input name="stock" type="number" value="{{ product.stock if product is defined and product else 0 }}">
+    <label>Danh mục</label>
+    <select name="category_id" required>
+      {% for category in categories %}
+        <option value="{{ category.id }}" {% if product is defined and product and product.category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
+      {% endfor %}
+    </select>
+    <label>Thương hiệu</label>
+    <select name="brand_id" required>
+      {% for brand in brands %}
+        <option value="{{ brand.id }}" {% if product is defined and product and product.brand_id == brand.id %}selected{% endif %}>{{ brand.name }}</option>
+      {% endfor %}
+    </select>
+    <label class="check-row">
+      <input name="is_featured" type="checkbox" value="true" {% if product is defined and product and product.is_featured %}checked{% endif %}>
+      Sản phẩm nổi bật
+    </label>
+    <label>Thông số 1</label>
+    <input name="spec_names" value="{{ specs[0].spec_name if specs is defined and specs|length > 0 and specs[0].spec_name is defined else '' }}" placeholder="Màn hình">
+    <input name="spec_values" value="{{ specs[0].spec_value if specs is defined and specs|length > 0 and specs[0].spec_value is defined else '' }}" placeholder="6.7 inch">
+    <label>Thông số 2</label>
+    <input name="spec_names" value="{{ specs[1].spec_name if specs is defined and specs|length > 1 and specs[1].spec_name is defined else '' }}" placeholder="RAM">
+    <input name="spec_values" value="{{ specs[1].spec_value if specs is defined and specs|length > 1 and specs[1].spec_value is defined else '' }}" placeholder="8GB">
     <button class="btn btn-primary btn-large" type="submit">Lưu sản phẩm</button>
   </form>
 </section>

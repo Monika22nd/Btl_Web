@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Quản lý sản phẩm - TechWorld{% endblock %}
+{% block content %}
+<section class="container admin-shell">
+  <div class="section-heading">
+    <h1>Quản lý sản phẩm</h1>
+    <a class="btn btn-primary" href="/admin/products/new">Thêm sản phẩm</a>
+  </div>
+  <form class="search-box" method="get">
+    <input name="q" value="{{ q or '' }}" placeholder="Tìm sản phẩm">
+    <button type="submit">⌕</button>
+  </form>
+  <div class="admin-table">
+    <table>
+      <thead><tr><th>Tên</th><th>Giá</th><th>Kho</th><th></th></tr></thead>
+      <tbody>
+        {% for product in products %}
+          <tr>
+            <td>{{ product.name }}</td>
+            <td>{{ "{:,.0f}".format(product.price).replace(",", ".") }}đ</td>
+            <td>{{ product.stock }}</td>
+            <td><a class="btn btn-outline" href="/admin/products/{{ product.id }}/edit">Sửa</a></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4">Chưa có sản phẩm.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

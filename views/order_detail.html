@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Đơn hàng #{{ order.id }} - TechWorld{% endblock %}
+{% block content %}
+<section class="container section">
+  <div class="section-heading">
+    <div>
+      <h1>Đơn hàng #{{ order.id }}</h1>
+      <p>{{ order.created_at.strftime('%d/%m/%Y %H:%M') if order.created_at else '' }}</p>
+    </div>
+    <span class="status-badge">{{ ORDER_STATUS.get(order.status, order.status) if ORDER_STATUS is defined else order.status }}</span>
+  </div>
+  <div class="admin-table">
+    <table>
+      <thead><tr><th>Sản phẩm</th><th>Số lượng</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
+      <tbody>
+        {% for item in items %}
+          <tr>
+            <td>{{ item.product.name if item.product else 'Sản phẩm' }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ "{:,.0f}".format(item.price).replace(",", ".") }}đ</td>
+            <td>{{ "{:,.0f}".format(item.price * item.quantity).replace(",", ".") }}đ</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <aside class="summary-box">
+    <div><span>Người nhận</span><strong>{{ order.user.full_name if order.user else '' }}</strong></div>
+    <div><span>Điện thoại</span><strong>{{ order.phone }}</strong></div>
+    <div><span>Địa chỉ</span><strong>{{ order.shipping_address }}</strong></div>
+    {% if order.note %}<div><span>Ghi chú</span><strong>{{ order.note }}</strong></div>{% endif %}
+    <div class="summary-total"><span>Tổng tiền</span><strong>{{ "{:,.0f}".format(order.total).replace(",", ".") }}đ</strong></div>
+    {% if order.status == "pending" %}
+      <form action="/don-hang/{{ order.id }}/huy" method="post">
+        <button class="btn btn-outline btn-large" type="submit">Hủy đơn</button>
+      </form>
+    {% endif %}
+  </aside>
+</section>
+{% endblock %}

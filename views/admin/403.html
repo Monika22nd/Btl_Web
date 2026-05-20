@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Không có quyền - TechWorld{% endblock %}
+{% block content %}
+<section class="container section">
+  <div class="empty-state">
+    <h1>Không có quyền truy cập</h1>
+    <p>Bạn cần đăng nhập bằng tài khoản quản trị để mở trang này.</p>
+    <a class="btn btn-primary" href="/dang-nhap?next=/admin/">Đăng nhập</a>
+  </div>
+</section>
+{% endblock %}

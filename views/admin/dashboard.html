@@ -4,12 +4,12 @@
 <section class="container admin-shell">
   <h1>Bảng điều khiển</h1>
   <div class="stats-grid">
-    <article><span>Sản phẩm</span><strong>{{ product_count if product_count is defined else 0 }}</strong></article>
-    <article><span>Đơn hàng</span><strong>{{ order_count if order_count is defined else 0 }}</strong></article>
+    <article><span>Sản phẩm</span><strong>{{ total_products if total_products is defined else 0 }}</strong></article>
+    <article><span>Đơn hàng</span><strong>{{ total_orders if total_orders is defined else 0 }}</strong></article>
     <article><span>Doanh thu</span><strong>{{ "{:,.0f}".format(revenue if revenue is defined else 0).replace(",", ".") }}đ</strong></article>
   </div>
   <div class="admin-table">
-    <div class="section-heading"><h2>Đơn gần đây</h2><a class="btn btn-outline" href="/admin/san-pham/them">Thêm sản phẩm</a></div>
+    <div class="section-heading"><h2>Đơn gần đây</h2><a class="btn btn-outline" href="/admin/products/new">Thêm sản phẩm</a></div>
     <table>
       <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Trạng thái</th><th>Tổng tiền</th></tr></thead>
       <tbody>

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Quản lý đơn hàng - TechWorld{% endblock %}
+{% block content %}
+<section class="container admin-shell">
+  <h1>Quản lý đơn hàng</h1>
+  <div class="admin-table">
+    <table>
+      <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Trạng thái</th><th>Tổng tiền</th><th></th></tr></thead>
+      <tbody>
+        {% for order in orders %}
+          <tr>
+            <td>#{{ order.id }}</td>
+            <td>{{ order.user.full_name if order.user else '' }}</td>
+            <td>{{ ORDER_STATUS.get(order.status, order.status) }}</td>
+            <td>{{ "{:,.0f}".format(order.total).replace(",", ".") }}đ</td>
+            <td><a class="btn btn-outline" href="/admin/orders/{{ order.id }}">Chi tiết</a></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5">Chưa có đơn hàng.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

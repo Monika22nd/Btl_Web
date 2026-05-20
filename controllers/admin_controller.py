@@ -8,7 +8,7 @@ from database import get_db
 from models import User, Product, Category, Brand, Order, OrderItem, ProductSpec, CartItem
 
 router = APIRouter(prefix="/admin")
-templates = Jinja2Templates(directory="views/admin")
+templates = Jinja2Templates(directory="views")
 
 
 # ── Guards ────────────────────────────────────────────────────────────────────
@@ -28,12 +28,12 @@ def _admin_ctx(request: Request, db: Session) -> dict:
 
 
 def _redirect_login():
-    return RedirectResponse(url="/login", status_code=303)
+    return RedirectResponse(url="/dang-nhap?next=/admin/", status_code=303)
 
 
 def _redirect_forbidden(request: Request, db: Session):
     return templates.TemplateResponse(
-        "403.html", {"request": request, **_admin_ctx(request, db)}, status_code=403
+        "admin/403.html", {"request": request, **_admin_ctx(request, db)}, status_code=403
     )
 
 
@@ -75,7 +75,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     )
 
     return templates.TemplateResponse(
-        "dashboard.html",
+        "admin/dashboard.html",
         {
             "request": request,
             **_admin_ctx(request, db),
@@ -116,7 +116,7 @@ def admin_products(
     products = query.offset((page - 1) * PER_PAGE).limit(PER_PAGE).all()
 
     return templates.TemplateResponse(
-        "products.html",
+        "admin/products.html",
         {
             "request": request,
             **_admin_ctx(request, db),
@@ -139,7 +139,7 @@ def admin_product_new(request: Request, db: Session = Depends(get_db)):
     brands     = db.query(Brand).all()
 
     return templates.TemplateResponse(
-        "product_form.html",
+        "admin/product_form.html",
         {
             "request": request,
             **_admin_ctx(request, db),
@@ -178,7 +178,7 @@ def admin_product_create(
         categories = db.query(Category).all()
         brands     = db.query(Brand).all()
         return templates.TemplateResponse(
-            "product_form.html",
+            "admin/product_form.html",
             {
                 "request": request,
                 **_admin_ctx(request, db),
@@ -231,7 +231,7 @@ def admin_product_edit(product_id: int, request: Request, db: Session = Depends(
     specs      = db.query(ProductSpec).filter(ProductSpec.product_id == product_id).all()
 
     return templates.TemplateResponse(
-        "product_form.html",
+        "admin/product_form.html",
         {
             "request": request,
             **_admin_ctx(request, db),
@@ -281,7 +281,7 @@ def admin_product_update(
         brands     = db.query(Brand).all()
         specs      = db.query(ProductSpec).filter(ProductSpec.product_id == product_id).all()
         return templates.TemplateResponse(
-            "product_form.html",
+            "admin/product_form.html",
             {
                 "request": request,
                 **_admin_ctx(request, db),
@@ -360,7 +360,7 @@ def admin_orders(
 
     from models.order import ORDER_STATUS
     return templates.TemplateResponse(
-        "orders.html",
+        "admin/orders.html",
         {
             "request": request,
             **_admin_ctx(request, db),
@@ -389,7 +389,7 @@ def admin_order_detail(order_id: int, request: Request, db: Session = Depends(ge
 
     from models.order import ORDER_STATUS
     return templates.TemplateResponse(
-        "order_detail.html",
+        "admin/order_detail.html",
         {
             "request": request,
             **_admin_ctx(request, db),
@@ -451,7 +451,7 @@ def admin_users(
     users = query.offset((page - 1) * PER_PAGE).limit(PER_PAGE).all()
 
     return templates.TemplateResponse(
-        "users.html",
+        "admin/users.html",
         {
             "request": request,
             **_admin_ctx(request, db),
@@ -518,7 +518,7 @@ def admin_categories(request: Request, db: Session = Depends(get_db)):
 
     categories = db.query(Category).order_by(Category.display_order).all()
     return templates.TemplateResponse(
-        "categories.html",
+        "admin/categories.html",
         {"request": request, **_admin_ctx(request, db), "categories": categories, "error": None},
     )
 
@@ -538,7 +538,7 @@ def admin_category_create(
     if db.query(Category).filter(Category.slug == slug).first():
         categories = db.query(Category).order_by(Category.display_order).all()
         return templates.TemplateResponse(
-            "categories.html",
+            "admin/categories.html",
             {
                 "request": request,
                 **_admin_ctx(request, db),
@@ -584,7 +584,7 @@ def admin_brands(request: Request, db: Session = Depends(get_db)):
 
     brands = db.query(Brand).order_by(Brand.name).all()
     return templates.TemplateResponse(
-        "brands.html",
+        "admin/brands.html",
         {"request": request, **_admin_ctx(request, db), "brands": brands, "error": None},
     )
 
@@ -602,7 +602,7 @@ def admin_brand_create(
     if db.query(Brand).filter(Brand.slug == slug).first():
         brands = db.query(Brand).order_by(Brand.name).all()
         return templates.TemplateResponse(
-            "brands.html",
+            "admin/brands.html",
             {
                 "request": request,
                 **_admin_ctx(request, db),

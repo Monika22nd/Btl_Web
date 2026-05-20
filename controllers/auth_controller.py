@@ -72,13 +72,15 @@ def register(
 
 # ── GET /dang-nhap ────────────────────────────────────────────────────────────
 @router.get("/dang-nhap", response_class=HTMLResponse)
-def login_page(request: Request, db: Session = Depends(get_db)):
+def login_page(request: Request, next: str = "/", db: Session = Depends(get_db)):
     if request.session.get("user_id"):
         return RedirectResponse(url="/", status_code=303)
+    if not next.startswith("/"):
+        next = "/"
     flash = request.session.pop("flash", None)
     return templates.TemplateResponse(
         "login.html",
-        {"request": request, **_session_ctx(request, db), "error": None, "flash": flash},
+        {"request": request, **_session_ctx(request, db), "error": None, "flash": flash, "next": next},
     )
 
 
@@ -102,6 +104,7 @@ def login(
                 "error": "Email hoặc mật khẩu không đúng.",
                 "email": email,
                 "flash": None,
+                "next": next,
             },
             status_code=401,
         )
