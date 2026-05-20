@@ -1,5 +1,8 @@
+import json
+from urllib.parse import parse_qs
+
 from fastapi import APIRouter, Depends, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -18,6 +21,19 @@ def _session_ctx(request: Request, db: Session) -> dict:
     if user_id:
         cart_count = db.query(CartItem).filter(CartItem.user_id == user_id).count()
     return {"user_id": user_id, "user_name": user_name, "cart_count": cart_count, "APP_NAME": APP_NAME}
+
+
+async def _read_api_data(request: Request) -> dict:
+    body = await request.body()
+    if not body:
+        return {}
+
+    try:
+        data = json.loads(body)
+        return data if isinstance(data, dict) else {}
+    except json.JSONDecodeError:
+        parsed = parse_qs(body.decode("utf-8", errors="ignore"))
+        return {key: values[-1] for key, values in parsed.items()}
 
 
 # ── GET /dang-ky ──────────────────────────────────────────────────────────────
@@ -117,6 +133,90 @@ def login(
     if not next.startswith("/"):
         next = "/"
     return RedirectResponse(url=next, status_code=303)
+
+
+# ── JSON auth API ─────────────────────────────────────────────────────────────
+@router.post("/api/auth/login")
+async def api_login(request: Request, db: Session = Depends(get_db)):
+    data = await _read_api_data(request)
+    email = str(data.get("email", "")).lower().strip()
+    password = str(data.get("password", ""))
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user or not user.verify_password(password):
+        return JSONResponse(
+            {"success": False, "message": "Email hoặc mật khẩu không đúng."},
+            status_code=401,
+        )
+
+    request.session["user_id"] = user.id
+    request.session["user_name"] = user.full_name
+    request.session["is_admin"] = user.is_admin
+
+    return {
+        "success": True,
+        "message": "Đăng nhập thành công.",
+        "user": {
+            "id": user.id,
+            "full_name": user.full_name,
+            "email": user.email,
+            "phone": user.phone,
+            "is_admin": user.is_admin,
+        },
+    }
+
+
+@router.post("/api/auth/register")
+async def api_register(request: Request, db: Session = Depends(get_db)):
+    data = await _read_api_data(request)
+    full_name = str(data.get("full_name") or data.get("name") or "").strip()
+    email = str(data.get("email", "")).lower().strip()
+    phone = str(data.get("phone", "")).strip()
+    password = str(data.get("password", ""))
+
+    if not full_name or not email or not password:
+        return JSONResponse(
+            {"success": False, "message": "Vui lòng nhập đầy đủ họ tên, email và mật khẩu."},
+            status_code=400,
+        )
+    if len(password) < 6:
+        return JSONResponse(
+            {"success": False, "message": "Mật khẩu phải có ít nhất 6 ký tự."},
+            status_code=400,
+        )
+    if db.query(User).filter(User.email == email).first():
+        return JSONResponse(
+            {"success": False, "message": "Email này đã được đăng ký."},
+            status_code=400,
+        )
+
+    user = User(full_name=full_name, email=email, phone=phone or None)
+    user.set_password(password)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    request.session["user_id"] = user.id
+    request.session["user_name"] = user.full_name
+    request.session["is_admin"] = user.is_admin
+
+    return {
+        "success": True,
+        "message": "Đăng ký thành công.",
+        "user": {
+            "id": user.id,
+            "full_name": user.full_name,
+            "email": user.email,
+            "phone": user.phone,
+            "is_admin": user.is_admin,
+        },
+    }
+
+
+@router.post("/api/auth/logout")
+def api_logout(request: Request):
+    request.session.clear()
+    return {"success": True, "message": "Đăng xuất thành công."}
 
 
 # ── GET /dang-xuat ────────────────────────────────────────────────────────────

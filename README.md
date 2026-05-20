@@ -49,7 +49,7 @@ http://127.0.0.1:8000
 ## Tài khoản mẫu
 
 - Admin: `admin@techworld.vn` / `admin123`
-- Người dùng demo: `demo@techworld.vn` / `demo123`
+- Người dùng demo: `user@techworld.vn` / `user123`
 
 ## Ghi chú
 

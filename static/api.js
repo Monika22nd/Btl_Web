@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8000";
+const API_URL = window.location.origin;
 
 export const API = {
   auth: {
@@ -14,10 +14,9 @@ export const API = {
       body: JSON.stringify(data),
     }).then(r => r.json()),
     
-    logout: (token) => fetch(`${API_URL}/api/auth/logout`, {
+    logout: () => fetch(`${API_URL}/api/auth/logout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
     }).then(r => r.json()),
   },
   
