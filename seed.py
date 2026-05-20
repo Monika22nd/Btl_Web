@@ -252,7 +252,7 @@ PRODUCTS = [
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def run_seed(db):
-    print("🌱 Bắt đầu seed dữ liệu mẫu...")
+    print("[seed] Starting sample data seed...")
 
     # 1. Categories
     cat_map = {}
@@ -261,7 +261,7 @@ def run_seed(db):
         db.add(cat)
         db.flush()
         cat_map[cat.slug] = cat.id
-    print(f"  ✅ {len(CATEGORIES)} danh mục")
+    print(f"[seed] Categories: {len(CATEGORIES)}")
 
     # 2. Brands
     brand_map = {}
@@ -270,7 +270,7 @@ def run_seed(db):
         db.add(brand)
         db.flush()
         brand_map[brand.slug] = brand.id
-    print(f"  ✅ {len(BRANDS)} thương hiệu")
+    print(f"[seed] Brands: {len(BRANDS)}")
 
     # 3. Products + Specs
     for (name, slug, desc, price, orig_price, stock, rating, review_count,
@@ -300,7 +300,7 @@ def run_seed(db):
                 spec_value=spec_value,
             ))
 
-    print(f"  ✅ {len(PRODUCTS)} sản phẩm + thông số kỹ thuật")
+    print(f"[seed] Products and specs: {len(PRODUCTS)}")
 
     # 4. Admin account
     from config import DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_NAME
@@ -324,8 +324,8 @@ def run_seed(db):
     db.add(demo)
 
     db.commit()
-    print("  ✅ Tài khoản admin + demo user")
-    print("🎉 Seed hoàn tất!")
+    print("[seed] Admin and demo user created")
+    print("[seed] Done")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -338,7 +338,7 @@ if __name__ == "__main__":
     try:
         from models import Category as _C
         if db.query(_C).count() > 0:
-            print("⚠️  DB đã có dữ liệu. Bỏ qua seed.")
+            print("[seed] Existing data found. Skipping seed.")
         else:
             run_seed(db)
     finally:
