@@ -24,25 +24,47 @@ def _session_ctx(request: Request, db: Session) -> dict:
     }
 
 
+def _parse_int(value):
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 # ── GET /san-pham — Danh sách sản phẩm ───────────────────────────────────────
 @router.get("/san-pham", response_class=HTMLResponse)
 def product_list(
     request: Request,
-    category_id: int = None,
-    brand_id: int = None,
-    min_price: int = None,
-    max_price: int = None,
+    q: str = "",
+    category_id: str = None,
+    brand_id: str = None,
+    min_price: str = None,
+    max_price: str = None,
     sort: str = "newest",
     page: int = 1,
     db: Session = Depends(get_db),
 ):
     ctx = _session_ctx(request, db)
     query = db.query(Product)
+    category_id = _parse_int(category_id)
+    brand_id = _parse_int(brand_id)
+    min_price = _parse_int(min_price)
+    max_price = _parse_int(max_price)
+    category_slugs = [slug for slug in request.query_params.getlist("category") if slug]
+    brand_slugs = [slug for slug in request.query_params.getlist("brand") if slug]
 
+    if q:
+        query = query.filter(Product.name.ilike(f"%{q}%"))
     if category_id:
         query = query.filter(Product.category_id == category_id)
+    elif category_slugs:
+        query = query.join(Category).filter(Category.slug.in_(category_slugs))
     if brand_id:
         query = query.filter(Product.brand_id == brand_id)
+    elif brand_slugs:
+        query = query.join(Brand).filter(Brand.slug.in_(brand_slugs))
     if min_price is not None:
         query = query.filter(Product.price >= min_price)
     if max_price is not None:
@@ -67,6 +89,7 @@ def product_list(
         "products": products,
         "categories": db.query(Category).order_by(Category.display_order).all(),
         "brands": db.query(Brand).all(),
+        "q": q,
         "sort": sort,
         "page": page,
         "pages": total_pages,
