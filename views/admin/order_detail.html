@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Đơn hàng #{{ order.id }} - Admin TechWorld{% endblock %}
+{% block title %}Don hang #{{ order.id }} - Admin TechWorld{% endblock %}
 {% block content %}
 <section class="container section">
   {% if flash %}
@@ -8,66 +8,62 @@
 
   <div class="section-heading">
     <div>
-      <h1>Đơn hàng #{{ order.id }}</h1>
+      <h1>Don hang #{{ order.id }}</h1>
       <p style="color:var(--muted);">
         {{ order.created_at.strftime('%d/%m/%Y %H:%M') if order.created_at else '' }}
       </p>
     </div>
-    <a class="btn btn-outline" href="/admin/orders">← Quay lại</a>
+    <a class="btn btn-outline" href="/admin/orders">Quay lai</a>
   </div>
 
-  {# ── Cập nhật trạng thái — Admin chỉ được chuyển đến "Đang giao hàng" ── #}
   <div class="admin-form" style="margin-bottom:16px;">
     <form action="/admin/orders/{{ order.id }}/status" method="post"
           style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-      <label style="margin:0;font-weight:800;">Cập nhật trạng thái:</label>
+      <label style="margin:0;font-weight:800;">Cap nhat trang thai:</label>
       <select name="status">
-        {% for key, label in ORDER_STATUS.items() %}
-          {% if key != 'delivered' %}  {# Admin không được set delivered — user mới được xác nhận #}
-            <option value="{{ key }}" {{ 'selected' if order.status == key }}>{{ label }}</option>
-          {% endif %}
+        {% for key in ADMIN_ALLOWED_STATUS %}
+          <option value="{{ key }}" {{ 'selected' if order.status == key }}>{{ ORDER_STATUS.get(key, key) }}</option>
         {% endfor %}
       </select>
-      <button class="btn btn-primary" type="submit">Cập nhật</button>
+      <button class="btn btn-primary" type="submit">Cap nhat</button>
     </form>
     <p style="color:var(--muted);font-size:13px;margin:6px 0 0;">
-      ℹ️ Trạng thái <strong>Đã giao hàng</strong> chỉ được xác nhận bởi khách hàng.
+      Khach hang se bam "Da nhan duoc hang" de hoan tat don.
     </p>
   </div>
 
-  {# ── Thông tin người nhận ── #}
   <div class="summary-box" style="margin-bottom:16px;">
-    <h2>Thông tin đơn hàng</h2>
-    <div><span>Khách hàng</span><strong>{{ user.full_name if user else 'N/A' }}</strong></div>
+    <h2>Thong tin don hang</h2>
+    <div><span>Khach hang</span><strong>{{ user.full_name if user else 'N/A' }}</strong></div>
     <div><span>Email</span><strong>{{ user.email if user else 'N/A' }}</strong></div>
-    {% if order.recipient_name %}<div><span>Người nhận</span><strong>{{ order.recipient_name }}</strong></div>{% endif %}
-    <div><span>Điện thoại</span><strong>{{ order.phone }}</strong></div>
-    <div><span>Địa chỉ</span><strong>{{ order.shipping_address }}</strong></div>
-    {% if order.note %}<div><span>Ghi chú</span><strong>{{ order.note }}</strong></div>{% endif %}
+    {% if order.recipient_name %}<div><span>Nguoi nhan</span><strong>{{ order.recipient_name }}</strong></div>{% endif %}
+    <div><span>Dien thoai</span><strong>{{ order.phone }}</strong></div>
+    <div><span>Dia chi</span><strong>{{ order.shipping_address }}</strong></div>
+    {% if order.note %}<div><span>Ghi chu</span><strong>{{ order.note }}</strong></div>{% endif %}
+    <div><span>Trang thai</span><strong>{{ ORDER_STATUS.get(order.status, order.status) }}</strong></div>
     <div class="summary-total">
-      <span>Tổng tiền</span>
+      <span>Tong tien</span>
       <strong style="color:var(--danger);">
-        {{ "{:,.0f}".format(order.total).replace(",",".") }}đ
+        {{ "{:,.0f}".format(order.total).replace(",",".") }}d
       </strong>
     </div>
   </div>
 
-  {# ── Sản phẩm ── #}
   <div class="admin-table">
     <table>
       <thead>
-        <tr><th>Sản phẩm</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th></tr>
+        <tr><th>San pham</th><th>Don gia</th><th>SL</th><th>Thanh tien</th></tr>
       </thead>
       <tbody>
         {% for item in items %}
           <tr>
-            <td>{{ item.product.name if item.product else 'Đã xoá' }}</td>
-            <td>{{ "{:,.0f}".format(item.price).replace(",",".") }}đ</td>
+            <td>{{ item.product.name if item.product else 'Da xoa' }}</td>
+            <td>{{ "{:,.0f}".format(item.price).replace(",",".") }}d</td>
             <td>{{ item.quantity }}</td>
-            <td><strong>{{ "{:,.0f}".format(item.price * item.quantity).replace(",",".") }}đ</strong></td>
+            <td><strong>{{ "{:,.0f}".format(item.price * item.quantity).replace(",",".") }}d</strong></td>
           </tr>
         {% else %}
-          <tr><td colspan="4">Không có sản phẩm.</td></tr>
+          <tr><td colspan="4">Khong co san pham.</td></tr>
         {% endfor %}
       </tbody>
     </table>

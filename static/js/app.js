@@ -46,17 +46,6 @@
     }
   });
 
-  document.querySelectorAll("[data-qty-minus], [data-qty-plus]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const control = button.closest(".qty-control");
-      const input = control ? control.querySelector("input[type='number']") : null;
-      if (!input) return;
-      const step = button.hasAttribute("data-qty-plus") ? 1 : -1;
-      const min = Number(input.min || 1);
-      input.value = Math.max(min, Number(input.value || min) + step);
-    });
-  });
-
   document.querySelectorAll("[data-add-cart]").forEach((button) => {
     button.addEventListener("click", () => {
       toast("Đã thêm vào giỏ hàng");

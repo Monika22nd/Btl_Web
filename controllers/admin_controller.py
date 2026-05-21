@@ -365,7 +365,7 @@ def admin_orders(
     page = max(1, min(page, total_pages))
     orders = query.offset((page - 1) * PER_PAGE).limit(PER_PAGE).all()
 
-    from models.order import ORDER_STATUS
+    from models.order import ORDER_STATUS, ADMIN_ALLOWED_STATUS
     return templates.TemplateResponse(
         "admin/orders.html",
         {
@@ -374,6 +374,7 @@ def admin_orders(
             "orders": orders,
             "status_filter": status,
             "ORDER_STATUS": ORDER_STATUS,
+            "ADMIN_ALLOWED_STATUS": ADMIN_ALLOWED_STATUS,
             "page": page,
             "total_pages": total_pages,
             "total": total,
@@ -394,7 +395,7 @@ def admin_order_detail(order_id: int, request: Request, db: Session = Depends(ge
     items = db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
     user  = db.query(User).filter(User.id == order.user_id).first()
 
-    from models.order import ORDER_STATUS
+    from models.order import ORDER_STATUS, ADMIN_ALLOWED_STATUS
     return templates.TemplateResponse(
         "admin/order_detail.html",
         {
@@ -404,6 +405,7 @@ def admin_order_detail(order_id: int, request: Request, db: Session = Depends(ge
             "items": items,
             "user": user,
             "ORDER_STATUS": ORDER_STATUS,
+            "ADMIN_ALLOWED_STATUS": ADMIN_ALLOWED_STATUS,
         },
     )
 
@@ -419,9 +421,9 @@ def admin_order_update_status(
     if not _require_admin(request):
         return _redirect_login()
 
-    from models.order import ORDER_STATUS
+    from models.order import ORDER_STATUS, ADMIN_ALLOWED_STATUS
     order = db.query(Order).filter(Order.id == order_id).first()
-    if order and status in ORDER_STATUS:
+    if order and status in ADMIN_ALLOWED_STATUS:
         order.status = status
         db.commit()
         request.session["flash"] = f"Đã cập nhật trạng thái đơn #{order_id} → {ORDER_STATUS[status]}."

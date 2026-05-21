@@ -6,13 +6,16 @@ from database import Base
 ORDER_STATUS = {
     "pending":   "Chờ xác nhận",
     "confirmed": "Đã xác nhận",
+    "preparing": "Chuẩn bị hàng",
     "shipping":  "Đang giao hàng",
-    "delivered": "Đã giao hàng",
+    "arrived":   "Đã giao tới nơi",
+    "delivered": "Đã nhận hàng",
+    "complaint": "Đang khiếu nại",
     "cancelled": "Đã huỷ",
 }
 
-# Trạng thái admin được phép chuyển (không bao gồm delivered — do user xác nhận)
-ADMIN_ALLOWED_STATUS = ["pending", "confirmed", "shipping", "cancelled"]
+# Trang thai admin duoc phep chuyen. delivered do khach xac nhan.
+ADMIN_ALLOWED_STATUS = ["pending", "confirmed", "preparing", "shipping", "arrived", "cancelled"]
 
 
 class Order(Base):

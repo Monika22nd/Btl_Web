@@ -61,7 +61,7 @@
   </div>
 
   {# ── Hành động của User ── #}
-  {% if not (is_admin is defined and is_admin) %}
+  {% if user_id is defined and user_id == order.user_id %}
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
 
       {# Huỷ đơn — chỉ khi pending #}
@@ -76,7 +76,7 @@
       {% endif %}
 
       {# Xác nhận đã nhận — chỉ khi shipping #}
-      {% if order.status == 'shipping' %}
+      {% if order.status in ['shipping', 'arrived'] %}
         <form action="/don-hang/{{ order.id }}/da-nhan" method="post"
               onsubmit="return confirm('Xác nhận bạn đã nhận được hàng?')">
           <button class="btn btn-primary" type="submit">
@@ -86,7 +86,7 @@
       {% endif %}
 
       {# Khiếu nại — khi shipping hoặc delivered #}
-      {% if order.status in ['shipping', 'delivered'] %}
+      {% if order.status in ['shipping', 'arrived', 'delivered'] %}
         <button class="btn btn-outline" type="button"
                 onclick="document.getElementById('complaint-form').style.display='block';this.style.display='none'">
           ⚠ Gửi khiếu nại
@@ -95,7 +95,7 @@
     </div>
 
     {# Form khiếu nại #}
-    {% if order.status in ['shipping', 'delivered'] %}
+    {% if order.status in ['shipping', 'arrived', 'delivered'] %}
       <div id="complaint-form" class="checkout-form" style="display:none;max-width:600px;margin-bottom:24px;">
         <h2 style="margin:0 0 12px;">Gửi khiếu nại đơn #{{ order.id }}</h2>
         <form action="/don-hang/{{ order.id }}/khieu-nai" method="post">

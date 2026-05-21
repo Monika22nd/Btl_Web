@@ -200,11 +200,38 @@ def order_confirm_received(order_id: int, request: Request, db: Session = Depend
     if not order:
         return RedirectResponse(url="/don-hang", status_code=303)
 
-    if order.status != "shipping":
-        request.session["flash"] = "Chỉ có thể xác nhận khi đơn đang được giao."
+    if order.status not in ("shipping", "arrived"):
+        request.session["flash"] = "Chỉ có thể xác nhận khi đơn đang giao hoặc đã tới nơi."
         return RedirectResponse(url=f"/don-hang/{order_id}", status_code=303)
 
     order.status = "delivered"
     db.commit()
     request.session["flash"] = f"Cảm ơn bạn! Đơn hàng #{order_id} đã hoàn tất."
+    return RedirectResponse(url=f"/don-hang/{order_id}", status_code=303)
+
+
+@router.post("/don-hang/{order_id}/khieu-nai")
+def order_complaint(
+    order_id: int,
+    request: Request,
+    reason: str = Form(default=""),
+    description: str = Form(default=""),
+    db: Session = Depends(get_db),
+):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return RedirectResponse(url="/dang-nhap", status_code=303)
+
+    order = db.query(Order).filter(Order.id == order_id, Order.user_id == user_id).first()
+    if not order:
+        return RedirectResponse(url="/don-hang", status_code=303)
+
+    if order.status not in ("shipping", "arrived", "delivered"):
+        request.session["flash"] = "Chỉ có thể khiếu nại khi đơn đang giao, đã tới nơi hoặc đã nhận."
+        return RedirectResponse(url=f"/don-hang/{order_id}", status_code=303)
+
+    order.status = "complaint"
+    order.note = ((order.note or "") + f"\nKhiếu nại: {reason} - {description}").strip()
+    db.commit()
+    request.session["flash"] = f"Đã ghi nhận khiếu nại cho đơn hàng #{order_id}."
     return RedirectResponse(url=f"/don-hang/{order_id}", status_code=303)

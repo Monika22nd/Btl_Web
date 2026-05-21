@@ -1,91 +1,28 @@
 {% extends "base.html" %}
-{% block title %}TechWorld - Mua sắm công nghệ{% endblock %}
+{% block title %}TechWorld - Mua sam cong nghe{% endblock %}
 {% block content %}
 {% set featured = featured_products if featured_products is defined else [] %}
 {% set deal_items = deals if deals is defined else [] %}
 
-<section class="container home-shell">
-  <div class="hero-carousel" data-carousel>
-
-    {# ── Banner động từ sản phẩm giảm giá ── #}
-    {% set banner_cats = [
-      ('Điện thoại', 'dien-thoai', '📱'),
-      ('Laptop', 'laptop', '💻'),
-      ('Tai nghe & Loa', 'tai-nghe', '🎧'),
-    ] %}
-
-    {% if deal_items %}
-      {% for product in deal_items[:3] %}
-        {% set discount = (((product.original_price - product.price) / product.original_price * 100) | round | int) if product.original_price and product.original_price > product.price else 0 %}
-        <article class="hero-slide {% if loop.first %}is-active{% endif %}">
-          <div>
-            <p class="eyebrow">
-              {% if discount > 0 %}Giảm {{ discount }}% — Ưu đãi hôm nay{% else %}Sản phẩm nổi bật{% endif %}
-            </p>
-            <h1>{{ product.name[:50] }}{% if product.name|length > 50 %}…{% endif %}</h1>
-            <p style="color:#d9e8eb;">
-              {{ product.description[:120] if product.description else "Sản phẩm chính hãng, bảo hành đầy đủ." }}…
-            </p>
-            <div style="display:flex;gap:12px;align-items:center;margin-bottom:18px;">
-              <span style="font-size:28px;font-weight:800;color:var(--accent);">
-                {{ "{:,.0f}".format(product.price).replace(",",".") }}đ
-              </span>
-              {% if product.original_price and product.original_price > product.price %}
-                <del style="color:#9ab;font-size:16px;">
-                  {{ "{:,.0f}".format(product.original_price).replace(",",".") }}đ
-                </del>
-              {% endif %}
-            </div>
-            <a class="btn btn-primary" href="/san-pham/{{ product.slug }}">Xem sản phẩm</a>
-          </div>
-          <div class="hero-device" style="font-size:18px;text-align:center;padding:16px;">
-            {% if product.image_url %}
-              <img src="{{ product.image_url }}" alt="{{ product.name }}"
-                   style="max-height:170px;object-fit:contain;border-radius:12px;">
-            {% else %}
-              {{ product.name[:2] }}
-            {% endif %}
-          </div>
-        </article>
-      {% endfor %}
-    {% else %}
-      {# Fallback nếu chưa có data #}
-      <article class="hero-slide is-active">
-        <div>
-          <p class="eyebrow">Ưu đãi hôm nay</p>
-          <h1>Công nghệ chính hãng, giá tốt nhất</h1>
-          <p style="color:#d9e8eb;">Điện thoại, laptop, tai nghe và phụ kiện — giao nhanh trong ngày.</p>
-          <a class="btn btn-primary" href="/san-pham">Xem sản phẩm</a>
-        </div>
-        <div class="hero-device">TW</div>
-      </article>
-    {% endif %}
-
-    <div class="carousel-dots" data-carousel-dots></div>
-  </div>
-</section>
-
-{# ── Sản phẩm nổi bật ── #}
 <section class="container section">
   <div class="section-heading">
-    <h2>Sản phẩm nổi bật</h2>
-    <a href="/san-pham">Xem tất cả →</a>
+    <h2>San pham noi bat</h2>
+    <a href="/san-pham">Xem tat ca -></a>
   </div>
   <div class="product-row">
     {% for product in featured %}
       {% include "partials/product_card.html" %}
     {% else %}
-      <p class="empty-state">Đang tải sản phẩm...</p>
+      <p class="empty-state">Dang tai san pham...</p>
     {% endfor %}
   </div>
 </section>
 
-{# ── Đang giảm giá ── #}
 {% if deal_items %}
 <section class="container section">
   <div class="section-heading">
-    <h2>🔥 Đang giảm giá</h2>
-    <a href="/san-pham?sale=1">Xem tất cả →</a>
+    <h2>Dang giam gia</h2>
+    <a href="/san-pham?sale=1">Xem tat ca -></a>
   </div>
   <div class="product-grid">
     {% for product in deal_items[:8] %}
@@ -95,29 +32,23 @@
 </section>
 {% endif %}
 
-{# ── Danh mục nhanh ── #}
 <section class="container section">
-  <div class="section-heading"><h2>Khám phá theo danh mục</h2></div>
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+  <div class="section-heading"><h2>Kham pha theo danh muc</h2></div>
+  <div class="quick-category-grid">
     {% set quick_cats = [
-      ('📱','Điện thoại','dien-thoai'),
+      ('📱','Dien thoai','dien-thoai'),
       ('💻','Laptop','laptop'),
       ('🎧','Tai nghe & Loa','tai-nghe'),
-      ('📦','Phụ kiện ĐT','phu-kien-dt'),
-      ('📲','Máy tính bảng','tablet'),
-      ('🖥️','Màn hình','man-hinh'),
-      ('🖱️','Phụ kiện PC','phu-kien-pc'),
+      ('📦','Phu kien DT','phu-kien-dt'),
+      ('📲','Tablet','tablet'),
+      ('🖥️','Man hinh','man-hinh'),
+      ('🖱️','Phu kien PC','phu-kien-pc'),
       ('📺','TV','tv'),
     ] %}
     {% for icon, name, slug in quick_cats %}
-      <a href="/danh-muc/{{ slug }}" style="
-        display:grid;place-items:center;gap:8px;padding:20px 12px;
-        background:#fff;border:1px solid var(--line);border-radius:var(--radius);
-        font-weight:700;text-align:center;transition:transform .15s,box-shadow .15s;
-      " onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='var(--shadow)'"
-         onmouseout="this.style.transform='';this.style.boxShadow=''">
-        <span style="font-size:28px;">{{ icon }}</span>
-        <span style="font-size:13px;">{{ name }}</span>
+      <a class="quick-category" href="/danh-muc/{{ slug }}">
+        <span>{{ icon }}</span>
+        <strong>{{ name }}</strong>
       </a>
     {% endfor %}
   </div>
