@@ -12,19 +12,43 @@
   <div class="detail-info">
     <p class="eyebrow">{{ product.brand.name if product.brand is defined and product.brand else "TechWorld" }}</p>
     <h1>{{ product.name }}</h1>
-    <div class="rating">★ {{ product.rating }} <span>({{ product.review_count }} đánh giá)</span></div>
-    <div class="detail-price">
-      <strong>{{ "{:,.0f}".format(product.price).replace(",", ".") }}đ</strong>
-      {% if product.original_price %}
-        <del>{{ "{:,.0f}".format(product.original_price).replace(",", ".") }}đ</del>
+
+    {# Rating — hiện 0 sao nếu chưa có đánh giá #}
+    <div class="rating">
+      {% if product.review_count and product.review_count > 0 %}
+        {% for i in range(1, 6) %}
+          <span style="color:{% if i <= product.rating|round %}#f59e0b{% else %}#d1d5db{% endif %}">★</span>
+        {% endfor %}
+        <strong>{{ "%.1f"|format(product.rating) }}</strong>
+        <span>({{ product.review_count }} đánh giá)</span>
+      {% else %}
+        {% for i in range(5) %}<span style="color:#d1d5db">★</span>{% endfor %}
+        <span style="color:var(--muted);">Chưa có đánh giá</span>
       {% endif %}
     </div>
-    <p class="stock {{ 'in-stock' if product.stock > 0 else 'out-stock' }}">{{ "Còn hàng" if product.stock > 0 else "Tạm hết hàng" }}</p>
+
+    <div class="detail-price">
+      <strong>{{ "{:,.0f}".format(product.price).replace(",",".") }}đ</strong>
+      {% if product.original_price and product.original_price > product.price %}
+        <del>{{ "{:,.0f}".format(product.original_price).replace(",",".") }}đ</del>
+        <em style="background:var(--danger);color:#fff;padding:3px 8px;border-radius:4px;font-style:normal;font-weight:700;font-size:13px;">
+          -{{ (((product.original_price - product.price) / product.original_price) * 100)|round|int }}%
+        </em>
+      {% endif %}
+    </div>
+
+    <p class="stock {{ 'in-stock' if product.stock > 0 else 'out-stock' }}">
+      {{ "Còn hàng (%d sp)" % product.stock if product.stock > 0 else "Tạm hết hàng" }}
+    </p>
+
     <div class="buy-actions">
       <form action="/gio-hang/them/{{ product.id }}" method="post">
-        <button class="btn btn-primary btn-large" type="submit" data-add-cart>Thêm vào giỏ hàng</button>
+        <button class="btn btn-primary btn-large" type="submit"
+                {% if product.stock == 0 %}disabled{% endif %}>
+          Thêm vào giỏ hàng
+        </button>
       </form>
-      <a class="btn btn-outline btn-large" href="/thanh-toan?product={{ product.id }}">Mua ngay</a>
+      <a class="btn btn-outline btn-large" href="/thanh-toan">Mua ngay</a>
     </div>
     <div class="service-box">
       <span>Đổi trả 30 ngày</span>
@@ -38,10 +62,9 @@
   <div class="spec-card">
     <h2>Thông số kỹ thuật</h2>
     <table>
-      {% for spec in product.specs if product.specs is defined %}
+      {% for spec in product.specs if product.specs is defined and product.specs %}
         <tr><th>{{ spec.spec_name }}</th><td>{{ spec.spec_value }}</td></tr>
       {% else %}
-        <tr><th>Màn hình</th><td>Thông tin đang cập nhật</td></tr>
         <tr><th>Bảo hành</th><td>12 tháng chính hãng</td></tr>
       {% endfor %}
     </table>
@@ -52,6 +75,42 @@
   </div>
 </section>
 
+{# ── Form viết đánh giá ── #}
+{% if user_id is defined and user_id %}
+<section class="container section">
+  <div class="checkout-form" style="max-width:600px;">
+    <h2 style="margin:0 0 16px;">Viết đánh giá</h2>
+    <form action="/san-pham/{{ product.slug }}/danh-gia" method="post">
+
+      <label>Điểm đánh giá</label>
+      <div id="star-rating" style="display:flex;gap:6px;margin-bottom:8px;">
+        {% for i in range(1, 6) %}
+          <label style="cursor:pointer;font-size:28px;color:#d1d5db;" data-star="{{ i }}">
+            ★
+            <input type="radio" name="rating" value="{{ i }}"
+                   style="display:none;" required>
+          </label>
+        {% endfor %}
+      </div>
+
+      <label>Nội dung nhận xét</label>
+      <textarea name="comment" required
+                placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm này..."></textarea>
+
+      <button class="btn btn-primary" type="submit">Gửi đánh giá</button>
+    </form>
+  </div>
+</section>
+{% else %}
+<section class="container section">
+  <p class="empty-state">
+    <a href="/dang-nhap?next=/san-pham/{{ product.slug }}" style="color:var(--primary);font-weight:700;">
+      Đăng nhập
+    </a> để viết đánh giá.
+  </p>
+</section>
+{% endif %}
+
 <section class="container section">
   <div class="section-heading"><h2>Sản phẩm tương tự</h2></div>
   <div class="product-row">
@@ -60,4 +119,35 @@
     {% endfor %}
   </div>
 </section>
+
+<style>
+#star-rating label:hover,
+#star-rating label:hover ~ label { color: #d1d5db; }
+#star-rating label { transition: color .1s; }
+#star-rating.rated label { color: #d1d5db; }
+</style>
+<script>
+(function() {
+  const container = document.getElementById('star-rating');
+  const labels = Array.from(container.querySelectorAll('label'));
+
+  labels.forEach((label, idx) => {
+    const input = label.querySelector('input');
+
+    label.addEventListener('mouseenter', () => {
+      labels.forEach((l, i) => l.style.color = i <= idx ? '#f59e0b' : '#d1d5db');
+    });
+
+    container.addEventListener('mouseleave', () => {
+      const checked = container.querySelector('input:checked');
+      const checkedIdx = checked ? parseInt(checked.value) - 1 : -1;
+      labels.forEach((l, i) => l.style.color = i <= checkedIdx ? '#f59e0b' : '#d1d5db');
+    });
+
+    input.addEventListener('change', () => {
+      labels.forEach((l, i) => l.style.color = i <= idx ? '#f59e0b' : '#d1d5db');
+    });
+  });
+})();
+</script>
 {% endblock %}

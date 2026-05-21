@@ -26,31 +26,39 @@ def _session_ctx(request: Request, db: Session) -> dict:
 
 
 def _parse_int(value):
-    if value in (None, ""):
-        return None
     try:
-        return int(value)
+        return int(value) if value not in (None, "") else None
     except (TypeError, ValueError):
         return None
 
 
-# ── GET / — Trang chủ ─────────────────────────────────────────────────────────
+# ── GET / ─────────────────────────────────────────────────────────────────────
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request, db: Session = Depends(get_db)):
     ctx = _session_ctx(request, db)
     categories = db.query(Category).order_by(Category.display_order).all()
+
     featured_products = (
         db.query(Product)
         .filter(Product.is_featured == True, Product.stock > 0)
         .order_by(Product.rating.desc())
         .limit(8).all()
     )
-    new_products = (
+
+    # Deals = sản phẩm THẬT SỰ đang giảm giá (original_price > price)
+    deal_products = (
         db.query(Product)
-        .filter(Product.stock > 0)
-        .order_by(Product.created_at.desc())
+        .filter(
+            Product.stock > 0,
+            Product.original_price != None,
+            Product.original_price > Product.price,
+        )
+        .order_by(
+            ((Product.original_price - Product.price) / Product.original_price).desc()
+        )
         .limit(8).all()
     )
+
     brands = db.query(Brand).all()
     flash = request.session.pop("flash", None)
 
@@ -58,39 +66,37 @@ def home(request: Request, db: Session = Depends(get_db)):
         "request": request, **ctx,
         "categories": categories,
         "featured_products": featured_products,
-        "deals": new_products,
+        "deals": deal_products,
         "brands": brands,
         "flash": flash,
     })
 
 
-# ── GET /tim-kiem — Tìm kiếm ─────────────────────────────────────────────────
+# ── GET /tim-kiem ─────────────────────────────────────────────────────────────
 @router.get("/tim-kiem", response_class=HTMLResponse)
 def search(
     request: Request,
     q: str = "",
-    category_id: str = None,
     brand_id: str = None,
     min_price: str = None,
     max_price: str = None,
     sort: str = "newest",
+    sale: str = "",
     page: int = 1,
     db: Session = Depends(get_db),
 ):
     ctx = _session_ctx(request, db)
     query = db.query(Product)
-    category_id = _parse_int(category_id)
-    brand_id = _parse_int(brand_id)
+
+    brand_id  = _parse_int(brand_id)
     min_price = _parse_int(min_price)
     max_price = _parse_int(max_price)
-    category_slugs = [slug for slug in request.query_params.getlist("category") if slug]
-    brand_slugs = [slug for slug in request.query_params.getlist("brand") if slug]
+    brand_slugs = [s for s in request.query_params.getlist("brand") if s]
+    category_slugs = [s for s in request.query_params.getlist("category") if s]
 
     if q:
         query = query.filter(Product.name.ilike(f"%{q}%"))
-    if category_id:
-        query = query.filter(Product.category_id == category_id)
-    elif category_slugs:
+    if category_slugs:
         query = query.join(Category).filter(Category.slug.in_(category_slugs))
     if brand_id:
         query = query.filter(Product.brand_id == brand_id)
@@ -100,12 +106,17 @@ def search(
         query = query.filter(Product.price >= min_price)
     if max_price is not None:
         query = query.filter(Product.price <= max_price)
+    if sale == "1":
+        query = query.filter(
+            Product.original_price != None,
+            Product.original_price > Product.price
+        )
 
     sort_map = {
-        "newest": Product.created_at.desc(),
-        "price_asc": Product.price.asc(),
+        "newest":     Product.created_at.desc(),
+        "price_asc":  Product.price.asc(),
         "price_desc": Product.price.desc(),
-        "rating": Product.rating.desc(),
+        "rating":     Product.rating.desc(),
     }
     query = query.order_by(sort_map.get(sort, Product.created_at.desc()))
 
@@ -114,30 +125,22 @@ def search(
     page = max(1, min(page, total_pages))
     products = query.offset((page - 1) * ITEMS_PER_PAGE).limit(ITEMS_PER_PAGE).all()
 
-    categories = db.query(Category).order_by(Category.display_order).all()
-    brands = db.query(Brand).all()
-
     return templates.TemplateResponse("products.html", {
         "request": request, **ctx,
         "products": products,
-        "categories": categories,
-        "brands": brands,
-        "q": q,
-        "sort": sort,
-        "page": page,
-        "pages": total_pages,
-        "total": total,
-        "heading": f"Kết quả tìm kiếm: \"{q}\"" if q else "Tất cả sản phẩm",
+        "categories": db.query(Category).order_by(Category.display_order).all(),
+        "brands": db.query(Brand).order_by(Brand.name).all(),
+        "q": q, "sort": sort,
+        "page": page, "pages": total_pages, "total": total,
+        "heading": f'Kết quả: "{q}"' if q else "Tất cả sản phẩm",
     })
 
 
-# ── GET /danh-muc/{slug} — Danh mục ──────────────────────────────────────────
+# ── GET /danh-muc/{slug} ──────────────────────────────────────────────────────
 @router.get("/danh-muc/{slug}", response_class=HTMLResponse)
 def category_page(
-    slug: str,
-    request: Request,
-    sort: str = "newest",
-    page: int = 1,
+    slug: str, request: Request,
+    sort: str = "newest", sale: str = "", page: int = 1,
     db: Session = Depends(get_db),
 ):
     ctx = _session_ctx(request, db)
@@ -146,11 +149,28 @@ def category_page(
         return templates.TemplateResponse("404.html", {"request": request, **ctx}, status_code=404)
 
     query = db.query(Product).filter(Product.category_id == category.id)
+
+    brand_slugs = [s for s in request.query_params.getlist("brand") if s]
+    min_price = _parse_int(request.query_params.get("min_price"))
+    max_price = _parse_int(request.query_params.get("max_price"))
+
+    if brand_slugs:
+        query = query.join(Brand).filter(Brand.slug.in_(brand_slugs))
+    if min_price is not None:
+        query = query.filter(Product.price >= min_price)
+    if max_price is not None:
+        query = query.filter(Product.price <= max_price)
+    if sale == "1":
+        query = query.filter(
+            Product.original_price != None,
+            Product.original_price > Product.price
+        )
+
     sort_map = {
-        "newest": Product.created_at.desc(),
-        "price_asc": Product.price.asc(),
+        "newest":     Product.created_at.desc(),
+        "price_asc":  Product.price.asc(),
         "price_desc": Product.price.desc(),
-        "rating": Product.rating.desc(),
+        "rating":     Product.rating.desc(),
     }
     query = query.order_by(sort_map.get(sort, Product.created_at.desc()))
 
@@ -158,16 +178,12 @@ def category_page(
     total_pages = max(1, -(-total // ITEMS_PER_PAGE))
     page = max(1, min(page, total_pages))
     products = query.offset((page - 1) * ITEMS_PER_PAGE).limit(ITEMS_PER_PAGE).all()
-    categories = db.query(Category).order_by(Category.display_order).all()
 
     return templates.TemplateResponse("products.html", {
         "request": request, **ctx,
         "products": products,
-        "categories": categories,
-        "brands": db.query(Brand).all(),
-        "sort": sort,
-        "page": page,
-        "pages": total_pages,
-        "total": total,
+        "categories": db.query(Category).order_by(Category.display_order).all(),
+        "brands": db.query(Brand).order_by(Brand.name).all(),
+        "sort": sort, "page": page, "pages": total_pages, "total": total,
         "heading": category.name,
     })

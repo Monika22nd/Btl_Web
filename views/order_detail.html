@@ -1,58 +1,57 @@
 {% extends "base.html" %}
-{% block title %}Đơn hàng #{{ order.id }} - Admin TechWorld{% endblock %}
+{% block title %}Đơn hàng #{{ order.id }} - TechWorld{% endblock %}
 {% block content %}
 <section class="container section">
-  {% if flash %}<div class="toast" style="position:static;margin-bottom:12px;">{{ flash }}</div>{% endif %}
+  {% if flash %}
+    <div class="toast" style="position:static;margin-bottom:14px;animation:none;">{{ flash }}</div>
+  {% endif %}
 
   <div class="section-heading">
     <div>
       <h1>Đơn hàng #{{ order.id }}</h1>
-      <p>{{ order.created_at.strftime('%d/%m/%Y %H:%M') if order.created_at else '' }}</p>
+      <p style="color:var(--muted);">
+        {{ order.created_at.strftime('%d/%m/%Y %H:%M') if order.created_at else '' }}
+      </p>
     </div>
-    <a class="btn btn-outline" href="/admin/orders">← Quay lại</a>
+    <span class="status-badge" style="font-size:15px;">
+      {{ ORDER_STATUS.get(order.status, order.status) if ORDER_STATUS is defined else order.status }}
+    </span>
   </div>
 
-  <!-- Đổi trạng thái -->
-  <div class="admin-form" style="margin-bottom:16px;">
-    <form action="/admin/orders/{{ order.id }}/status" method="post" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-      <label style="margin:0;font-weight:800;">Trạng thái:</label>
-      <select name="status">
-        {% for key, label in ORDER_STATUS.items() %}
-          <option value="{{ key }}" {{ 'selected' if order.status == key else '' }}>{{ label }}</option>
-        {% endfor %}
-      </select>
-      <button class="btn btn-primary" type="submit">Cập nhật</button>
-    </form>
-  </div>
-
-  <!-- Thông tin khách -->
+  {# ── Thông tin người nhận ── #}
   <div class="summary-box" style="margin-bottom:16px;">
-    <h2>Thông tin người nhận</h2>
-    <div><span>Khách hàng</span><strong>{{ user.full_name if user else 'N/A' }}</strong></div>
-    <div><span>Email</span><strong>{{ user.email if user else 'N/A' }}</strong></div>
+    <h2>Thông tin giao hàng</h2>
+    {% if order.recipient_name is defined and order.recipient_name %}
+      <div><span>Người nhận</span><strong>{{ order.recipient_name }}</strong></div>
+    {% endif %}
     <div><span>Điện thoại</span><strong>{{ order.phone }}</strong></div>
     <div><span>Địa chỉ</span><strong>{{ order.shipping_address }}</strong></div>
     {% if order.note %}<div><span>Ghi chú</span><strong>{{ order.note }}</strong></div>{% endif %}
     <div class="summary-total">
       <span>Tổng tiền</span>
-      <strong>{{ "{:,.0f}".format(order.total).replace(",", ".") }}đ</strong>
+      <strong style="color:var(--danger);font-size:20px;">
+        {{ "{:,.0f}".format(order.total).replace(",",".") }}đ
+      </strong>
     </div>
   </div>
 
-  <!-- Danh sách sản phẩm -->
-  <div class="admin-table">
-    <h2 style="padding:12px 12px 0;">Sản phẩm trong đơn</h2>
+  {# ── Danh sách sản phẩm ── #}
+  <div class="admin-table" style="margin-bottom:16px;">
     <table>
       <thead>
-        <tr><th>Sản phẩm</th><th>Đơn giá</th><th>Số lượng</th><th>Thành tiền</th></tr>
+        <tr><th>Sản phẩm</th><th>Đơn giá</th><th>SL</th><th>Thành tiền</th></tr>
       </thead>
       <tbody>
         {% for item in items %}
           <tr>
-            <td>{{ item.product.name if item.product else 'Đã xoá' }}</td>
-            <td>{{ "{:,.0f}".format(item.price).replace(",", ".") }}đ</td>
+            <td>
+              <a href="/san-pham/{{ item.product.slug }}" style="color:var(--primary);font-weight:600;">
+                {{ item.product.name if item.product else 'Sản phẩm đã xoá' }}
+              </a>
+            </td>
+            <td>{{ "{:,.0f}".format(item.price).replace(",",".") }}đ</td>
             <td>{{ item.quantity }}</td>
-            <td>{{ "{:,.0f}".format(item.price * item.quantity).replace(",", ".") }}đ</td>
+            <td><strong>{{ "{:,.0f}".format(item.price * item.quantity).replace(",",".") }}đ</strong></td>
           </tr>
         {% else %}
           <tr><td colspan="4">Không có sản phẩm.</td></tr>
@@ -60,5 +59,68 @@
       </tbody>
     </table>
   </div>
+
+  {# ── Hành động của User ── #}
+  {% if not (is_admin is defined and is_admin) %}
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+
+      {# Huỷ đơn — chỉ khi pending #}
+      {% if order.status == 'pending' %}
+        <form action="/don-hang/{{ order.id }}/huy" method="post"
+              onsubmit="return confirm('Bạn có chắc muốn huỷ đơn hàng này?')">
+          <button class="btn btn-outline" type="submit"
+                  style="color:var(--danger);border-color:var(--danger);">
+            ✕ Huỷ đơn hàng
+          </button>
+        </form>
+      {% endif %}
+
+      {# Xác nhận đã nhận — chỉ khi shipping #}
+      {% if order.status == 'shipping' %}
+        <form action="/don-hang/{{ order.id }}/da-nhan" method="post"
+              onsubmit="return confirm('Xác nhận bạn đã nhận được hàng?')">
+          <button class="btn btn-primary" type="submit">
+            ✓ Đã nhận được hàng
+          </button>
+        </form>
+      {% endif %}
+
+      {# Khiếu nại — khi shipping hoặc delivered #}
+      {% if order.status in ['shipping', 'delivered'] %}
+        <button class="btn btn-outline" type="button"
+                onclick="document.getElementById('complaint-form').style.display='block';this.style.display='none'">
+          ⚠ Gửi khiếu nại
+        </button>
+      {% endif %}
+    </div>
+
+    {# Form khiếu nại #}
+    {% if order.status in ['shipping', 'delivered'] %}
+      <div id="complaint-form" class="checkout-form" style="display:none;max-width:600px;margin-bottom:24px;">
+        <h2 style="margin:0 0 12px;">Gửi khiếu nại đơn #{{ order.id }}</h2>
+        <form action="/don-hang/{{ order.id }}/khieu-nai" method="post">
+          <label>Lý do khiếu nại</label>
+          <select name="reason" required style="margin-bottom:8px;">
+            <option value="">-- Chọn lý do --</option>
+            <option value="missing">Giao thiếu hàng</option>
+            <option value="damaged">Hàng bị hỏng/lỗi</option>
+            <option value="wrong">Giao sai sản phẩm</option>
+            <option value="other">Lý do khác</option>
+          </select>
+          <label>Mô tả chi tiết</label>
+          <textarea name="description" required placeholder="Mô tả vấn đề bạn gặp phải..."></textarea>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-primary" type="submit">Gửi khiếu nại</button>
+            <button class="btn btn-outline" type="button"
+                    onclick="document.getElementById('complaint-form').style.display='none'">
+              Huỷ
+            </button>
+          </div>
+        </form>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <a class="btn btn-outline" href="/don-hang">← Về lịch sử đơn hàng</a>
 </section>
 {% endblock %}

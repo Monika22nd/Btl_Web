@@ -8,16 +8,37 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') if request is defined else '/static/css/style.css' }}">
+  <style>
+    /* ── Navbar cuộn ngang, không bị cắt ── */
+    .category-scroll {
+      overflow-x: auto;
+      white-space: nowrap;
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 4px;
+      scrollbar-width: none;
+    }
+    .category-scroll::-webkit-scrollbar { display: none; }
+    .category-scroll a {
+      display: inline-flex;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+  </style>
 </head>
 <body>
-  {% set nav_categories = categories if categories is defined else [
-    {'name':'Điện thoại','slug':'dien-thoai','icon':'📱'},
-    {'name':'Laptop','slug':'laptop','icon':'💻'},
-    {'name':'Máy tính bảng','slug':'may-tinh-bang','icon':'📲'},
-    {'name':'Tai nghe','slug':'tai-nghe','icon':'🎧'},
-    {'name':'Đồng hồ','slug':'dong-ho','icon':'⌚'},
-    {'name':'Phụ kiện','slug':'phu-kien','icon':'🔌'}
+  {# Danh mục đồng bộ với BestBuy import #}
+  {% set default_categories = [
+    {'name':'Điện thoại',         'slug':'dien-thoai',  'icon':'📱'},
+    {'name':'Máy tính bảng',      'slug':'tablet',       'icon':'📲'},
+    {'name':'Laptop',             'slug':'laptop',       'icon':'💻'},
+    {'name':'Màn hình',           'slug':'man-hinh',     'icon':'🖥️'},
+    {'name':'Tai nghe & Loa',     'slug':'tai-nghe',     'icon':'🎧'},
+    {'name':'Phụ kiện ĐT',        'slug':'phu-kien-dt',  'icon':'📦'},
+    {'name':'Phụ kiện máy tính',  'slug':'phu-kien-pc',  'icon':'🖱️'},
+    {'name':'TV',                 'slug':'tv',           'icon':'📺'},
   ] %}
+  {% set nav_categories = categories if (categories is defined and categories) else default_categories %}
 
   <header class="site-header">
     <div class="top-strip">
@@ -32,7 +53,9 @@
         <span>TechWorld</span>
       </a>
       <form class="search-box" action="/tim-kiem" method="get">
-        <input type="search" name="q" value="{{ q if q is defined else '' }}" placeholder="Bạn cần tìm sản phẩm nào?">
+        <input type="search" name="q"
+               value="{{ q if q is defined else '' }}"
+               placeholder="Bạn cần tìm sản phẩm nào?">
         <button type="submit" aria-label="Tìm kiếm">⌕</button>
       </form>
       <nav class="header-actions" aria-label="Tác vụ nhanh">
@@ -59,10 +82,10 @@
     </div>
     <div class="category-bar">
       <div class="container category-scroll">
-        {% for category in nav_categories %}
-          <a href="/danh-muc/{{ category.slug }}">
-            <span>{{ category.icon if category.icon is defined else '•' }}</span>
-            {{ category.name }}
+        {% for cat in nav_categories %}
+          <a href="/danh-muc/{{ cat.slug if cat.slug is defined else cat['slug'] }}">
+            <span>{{ cat.icon if cat.icon is defined else cat['icon'] }}</span>
+            {{ cat.name if cat.name is defined else cat['name'] }}
           </a>
         {% endfor %}
       </div>
@@ -70,6 +93,11 @@
   </header>
 
   <main>
+    {% if flash is defined and flash %}
+      <div class="container" style="padding-top:12px;">
+        <div class="toast" style="position:static;animation:none;">{{ flash }}</div>
+      </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 

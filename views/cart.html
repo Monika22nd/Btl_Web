@@ -5,31 +5,117 @@
   <div class="cart-list">
     <h1>Giỏ hàng</h1>
     {% for item in cart_items if cart_items is defined %}
-      <article class="cart-item">
-        <img src="{{ item.product.image_url or '/static/images/product-placeholder.svg' }}" alt="{{ item.product.name }}">
+      <article class="cart-item" data-item-id="{{ item.id }}"
+               data-price="{{ item.product.price }}"
+               data-stock="{{ item.product.stock }}">
+        <img src="{{ item.product.image_url or '/static/images/product-placeholder.svg' }}"
+             alt="{{ item.product.name }}">
         <div>
           <h2>{{ item.product.name }}</h2>
-          <p>{{ "{:,.0f}".format(item.product.price).replace(",", ".") }}đ</p>
+          <p class="unit-price">{{ "{:,.0f}".format(item.product.price).replace(",",".") }}đ / sản phẩm</p>
         </div>
-        <form class="qty-control" action="/gio-hang/cap-nhat/{{ item.id }}" method="post">
+        <div class="qty-control">
           <button type="button" data-qty-minus>-</button>
-          <input name="quantity" value="{{ item.quantity }}" min="1" type="number">
+          <input class="qty-input" type="number"
+                 value="{{ item.quantity }}" min="1"
+                 max="{{ item.product.stock }}"
+                 data-item-id="{{ item.id }}">
           <button type="button" data-qty-plus>+</button>
-        </form>
-        <strong>{{ "{:,.0f}".format(item.product.price * item.quantity).replace(",", ".") }}đ</strong>
+        </div>
+        <strong class="line-total">
+          {{ "{:,.0f}".format(item.product.price * item.quantity).replace(",",".") }}đ
+        </strong>
         <form action="/gio-hang/xoa/{{ item.id }}" method="post">
           <button class="remove-btn" type="submit">Xóa</button>
         </form>
       </article>
     {% else %}
-      <p class="empty-state">Giỏ hàng đang trống.</p>
+      <p class="empty-state">Giỏ hàng đang trống. <a href="/san-pham">Mua sắm ngay</a></p>
     {% endfor %}
   </div>
+
   <aside class="summary-box">
     <h2>Tạm tính</h2>
-    <div><span>Tổng tiền</span><strong>{{ "{:,.0f}".format(cart_total if cart_total is defined else 0).replace(",", ".") }}đ</strong></div>
+    <div>
+      <span>Tổng tiền</span>
+      <strong id="cart-total">
+        {{ "{:,.0f}".format(cart_total if cart_total is defined else 0).replace(",",".") }}đ
+      </strong>
+    </div>
     <a class="btn btn-primary btn-large" href="/thanh-toan">Thanh toán</a>
     <a class="btn btn-outline" href="/san-pham">Tiếp tục mua sắm</a>
+    {% if cart_items is defined and cart_items %}
+      <form action="/gio-hang/xoa-tat-ca" method="post">
+        <button class="btn btn-outline btn-large" type="submit"
+                style="color:var(--danger);border-color:var(--danger)">
+          Xoá giỏ hàng
+        </button>
+      </form>
+    {% endif %}
   </aside>
 </section>
+
+<script>
+(function () {
+  // Định dạng số kiểu VND
+  function fmtVnd(n) {
+    return n.toLocaleString('vi-VN') + 'đ';
+  }
+
+  // Tính lại tổng từ tất cả line-total
+  function recalcTotal() {
+    let total = 0;
+    document.querySelectorAll('.cart-item').forEach(card => {
+      const price = parseInt(card.dataset.price);
+      const qty   = parseInt(card.querySelector('.qty-input').value) || 1;
+      total += price * qty;
+    });
+    document.getElementById('cart-total').textContent = fmtVnd(total);
+  }
+
+  // Gửi AJAX cập nhật số lượng lên server
+  async function updateQty(itemId, qty) {
+    const form = new FormData();
+    form.append('quantity', qty);
+    await fetch(`/gio-hang/cap-nhat/${itemId}`, {
+      method: 'POST', body: form,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      redirect: 'manual'   // không follow redirect
+    });
+  }
+
+  // Debounce để không spam request khi nhập tay
+  let timer = null;
+  function debounce(fn, ms) {
+    clearTimeout(timer);
+    timer = setTimeout(fn, ms);
+  }
+
+  document.querySelectorAll('.cart-item').forEach(card => {
+    const input   = card.querySelector('.qty-input');
+    const itemId  = card.dataset.itemId;
+    const price   = parseInt(card.dataset.price);
+    const stock   = parseInt(card.dataset.stock);
+    const lineEl  = card.querySelector('.line-total');
+
+    function applyQty(newQty) {
+      newQty = Math.max(1, Math.min(newQty, stock));
+      input.value = newQty;
+      lineEl.textContent = fmtVnd(price * newQty);
+      recalcTotal();
+      debounce(() => updateQty(itemId, newQty), 600);
+    }
+
+    card.querySelector('[data-qty-minus]').addEventListener('click', () => {
+      applyQty(parseInt(input.value) - 1);
+    });
+    card.querySelector('[data-qty-plus]').addEventListener('click', () => {
+      applyQty(parseInt(input.value) + 1);
+    });
+    input.addEventListener('input', () => {
+      applyQty(parseInt(input.value) || 1);
+    });
+  });
+})();
+</script>
 {% endblock %}

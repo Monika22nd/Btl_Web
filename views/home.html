@@ -2,88 +2,125 @@
 {% block title %}TechWorld - Mua sắm công nghệ{% endblock %}
 {% block content %}
 {% set featured = featured_products if featured_products is defined else [] %}
-{% set deal_items = deals if deals is defined else featured %}
+{% set deal_items = deals if deals is defined else [] %}
 
 <section class="container home-shell">
   <div class="hero-carousel" data-carousel>
-    <article class="hero-slide is-active">
-      <div>
-        <p class="eyebrow">Ưu đãi cuối tuần</p>
-        <h1>Điện thoại mới, quà tặng thật dùng được</h1>
-        <p>Giảm trực tiếp, trả góp linh hoạt và giao nhanh trong ngày với các sản phẩm còn hàng.</p>
-        <a class="btn btn-primary" href="/san-pham">Xem sản phẩm</a>
-      </div>
-      <div class="hero-device">16 Pro</div>
-    </article>
-    <article class="hero-slide">
-      <div>
-        <p class="eyebrow">Laptop học tập - làm việc</p>
-        <h1>Hiệu năng gọn nhẹ cho lịch làm việc dày</h1>
-        <p>Chọn nhanh theo nhu cầu, so cấu hình rõ ràng, nút mua đặt đúng nơi dễ bấm.</p>
-        <a class="btn btn-primary" href="/danh-muc/laptop">Mua laptop</a>
-      </div>
-      <div class="hero-device hero-laptop">M3</div>
-    </article>
-    <article class="hero-slide">
-      <div>
-        <p class="eyebrow">Phụ kiện chính hãng</p>
-        <h1>Sạc, tai nghe, đồng hồ đủ cho một hệ sinh thái</h1>
-        <p>Thiết kế khác màu TGDD nhưng giữ thói quen thao tác quen thuộc.</p>
-        <a class="btn btn-primary" href="/danh-muc/phu-kien">Xem phụ kiện</a>
-      </div>
-      <div class="hero-device hero-audio">Pods</div>
-    </article>
+
+    {# ── Banner động từ sản phẩm giảm giá ── #}
+    {% set banner_cats = [
+      ('Điện thoại', 'dien-thoai', '📱'),
+      ('Laptop', 'laptop', '💻'),
+      ('Tai nghe & Loa', 'tai-nghe', '🎧'),
+    ] %}
+
+    {% if deal_items %}
+      {% for product in deal_items[:3] %}
+        {% set discount = (((product.original_price - product.price) / product.original_price * 100) | round | int) if product.original_price and product.original_price > product.price else 0 %}
+        <article class="hero-slide {% if loop.first %}is-active{% endif %}">
+          <div>
+            <p class="eyebrow">
+              {% if discount > 0 %}Giảm {{ discount }}% — Ưu đãi hôm nay{% else %}Sản phẩm nổi bật{% endif %}
+            </p>
+            <h1>{{ product.name[:50] }}{% if product.name|length > 50 %}…{% endif %}</h1>
+            <p style="color:#d9e8eb;">
+              {{ product.description[:120] if product.description else "Sản phẩm chính hãng, bảo hành đầy đủ." }}…
+            </p>
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:18px;">
+              <span style="font-size:28px;font-weight:800;color:var(--accent);">
+                {{ "{:,.0f}".format(product.price).replace(",",".") }}đ
+              </span>
+              {% if product.original_price and product.original_price > product.price %}
+                <del style="color:#9ab;font-size:16px;">
+                  {{ "{:,.0f}".format(product.original_price).replace(",",".") }}đ
+                </del>
+              {% endif %}
+            </div>
+            <a class="btn btn-primary" href="/san-pham/{{ product.slug }}">Xem sản phẩm</a>
+          </div>
+          <div class="hero-device" style="font-size:18px;text-align:center;padding:16px;">
+            {% if product.image_url %}
+              <img src="{{ product.image_url }}" alt="{{ product.name }}"
+                   style="max-height:200px;object-fit:contain;border-radius:12px;">
+            {% else %}
+              {{ product.name[:2] }}
+            {% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    {% else %}
+      {# Fallback nếu chưa có data #}
+      <article class="hero-slide is-active">
+        <div>
+          <p class="eyebrow">Ưu đãi hôm nay</p>
+          <h1>Công nghệ chính hãng, giá tốt nhất</h1>
+          <p style="color:#d9e8eb;">Điện thoại, laptop, tai nghe và phụ kiện — giao nhanh trong ngày.</p>
+          <a class="btn btn-primary" href="/san-pham">Xem sản phẩm</a>
+        </div>
+        <div class="hero-device">TW</div>
+      </article>
+    {% endif %}
+
     <div class="carousel-dots" data-carousel-dots></div>
   </div>
 </section>
 
+{# ── Sản phẩm nổi bật ── #}
 <section class="container section">
   <div class="section-heading">
     <h2>Sản phẩm nổi bật</h2>
-    <a href="/san-pham">Xem tất cả</a>
+    <a href="/san-pham">Xem tất cả →</a>
   </div>
   <div class="product-row">
     {% for product in featured %}
       {% include "partials/product_card.html" %}
     {% else %}
-      {% for name in ["iPhone 16 Pro Max", "Galaxy S25 Ultra", "MacBook Air M3", "AirPods Pro"] %}
-        {% set product = {'id': loop.index, 'name': name, 'slug': name|lower|replace(' ','-'), 'price': 24990000, 'original_price': 28990000, 'rating': 4.8, 'review_count': 124, 'image_url': ''} %}
-        {% include "partials/product_card.html" %}
-      {% endfor %}
+      <p class="empty-state">Đang tải sản phẩm...</p>
     {% endfor %}
   </div>
 </section>
 
+{# ── Đang giảm giá ── #}
+{% if deal_items %}
 <section class="container section">
   <div class="section-heading">
-    <h2>Khuyến mãi hot</h2>
-    <a href="/san-pham?sort=deal">Săn deal</a>
+    <h2>🔥 Đang giảm giá</h2>
+    <a href="/san-pham?sale=1">Xem tất cả →</a>
   </div>
   <div class="product-grid">
     {% for product in deal_items[:8] %}
       {% include "partials/product_card.html" %}
-    {% else %}
-      {% for name in ["Xiaomi 15 Pro", "JBL Flip 6", "Garmin Venu 3", "Sạc dự phòng Anker"] %}
-        {% set product = {'id': loop.index, 'name': name, 'slug': name|lower|replace(' ','-'), 'price': 3990000, 'original_price': 4990000, 'rating': 4.6, 'review_count': 88, 'image_url': ''} %}
-        {% include "partials/product_card.html" %}
-      {% endfor %}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# ── Danh mục nhanh ── #}
+<section class="container section">
+  <div class="section-heading"><h2>Khám phá theo danh mục</h2></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+    {% set quick_cats = [
+      ('📱','Điện thoại','dien-thoai'),
+      ('💻','Laptop','laptop'),
+      ('🎧','Tai nghe & Loa','tai-nghe'),
+      ('📦','Phụ kiện ĐT','phu-kien-dt'),
+      ('📲','Máy tính bảng','tablet'),
+      ('🖥️','Màn hình','man-hinh'),
+      ('🖱️','Phụ kiện PC','phu-kien-pc'),
+      ('📺','TV','tv'),
+    ] %}
+    {% for icon, name, slug in quick_cats %}
+      <a href="/danh-muc/{{ slug }}" style="
+        display:grid;place-items:center;gap:8px;padding:20px 12px;
+        background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+        font-weight:700;text-align:center;transition:transform .15s,box-shadow .15s;
+      " onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='var(--shadow)'"
+         onmouseout="this.style.transform='';this.style.boxShadow=''">
+        <span style="font-size:28px;">{{ icon }}</span>
+        <span style="font-size:13px;">{{ name }}</span>
+      </a>
     {% endfor %}
   </div>
 </section>
 
-{% if category_sections is defined %}
-  {% for section in category_sections %}
-    <section class="container section">
-      <div class="section-heading">
-        <h2>{{ section.category.name }}</h2>
-        <a href="/danh-muc/{{ section.category.slug }}">Xem thêm</a>
-      </div>
-      <div class="product-grid">
-        {% for product in section.products[:4] %}
-          {% include "partials/product_card.html" %}
-        {% endfor %}
-      </div>
-    </section>
-  {% endfor %}
-{% endif %}
 {% endblock %}

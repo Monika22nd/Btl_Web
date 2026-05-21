@@ -50,10 +50,11 @@ def checkout_page(request: Request, db: Session = Depends(get_db)):
     })
 
 
-# ── POST /thanh-toan ──────────────────────────────────────────────────────────
+# ── POST /thanh-toan — nhận thêm recipient_name ───────────────────────────────
 @router.post("/thanh-toan")
 def checkout_submit(
     request: Request,
+    recipient_name: str = Form(...),
     shipping_address: str = Form(...),
     phone: str = Form(...),
     note: str = Form(default=""),
@@ -67,7 +68,6 @@ def checkout_submit(
     if not cart_items:
         return RedirectResponse(url="/gio-hang", status_code=303)
 
-    # Validate tồn kho
     for item in cart_items:
         if item.product.stock < item.quantity:
             cart_total = sum(i.product.price * i.quantity for i in cart_items)
@@ -84,17 +84,23 @@ def checkout_submit(
     total = sum(item.product.price * item.quantity for item in cart_items)
 
     order = Order(
-        user_id=user_id, total=total, status="pending",
+        user_id=user_id,
+        total=total,
+        status="pending",
         shipping_address=shipping_address.strip(),
-        phone=phone.strip(), note=note.strip() or None,
+        phone=phone.strip(),
+        note=note.strip() or None,
+        recipient_name=recipient_name.strip(),
     )
     db.add(order)
     db.flush()
 
     for item in cart_items:
         db.add(OrderItem(
-            order_id=order.id, product_id=item.product_id,
-            quantity=item.quantity, price=item.product.price,
+            order_id=order.id,
+            product_id=item.product_id,
+            quantity=item.quantity,
+            price=item.product.price,
         ))
         item.product.stock -= item.quantity
 
@@ -105,7 +111,7 @@ def checkout_submit(
     return RedirectResponse(url=f"/don-hang/{order.id}", status_code=303)
 
 
-# ── GET /don-hang — Lịch sử đơn hàng ────────────────────────────────────────
+# ── GET /don-hang ─────────────────────────────────────────────────────────────
 @router.get("/don-hang", response_class=HTMLResponse)
 def order_list(request: Request, db: Session = Depends(get_db)):
     user_id = request.session.get("user_id")
@@ -129,7 +135,7 @@ def order_list(request: Request, db: Session = Depends(get_db)):
     })
 
 
-# ── GET /don-hang/{id} — Chi tiết đơn hàng ───────────────────────────────────
+# ── GET /don-hang/{id} ────────────────────────────────────────────────────────
 @router.get("/don-hang/{order_id}", response_class=HTMLResponse)
 def order_detail(order_id: int, request: Request, db: Session = Depends(get_db)):
     user_id = request.session.get("user_id")
@@ -157,7 +163,7 @@ def order_detail(order_id: int, request: Request, db: Session = Depends(get_db))
     })
 
 
-# ── POST /don-hang/{id}/huy — Huỷ đơn ───────────────────────────────────────
+# ── POST /don-hang/{id}/huy — Huỷ (user, chỉ khi pending) ───────────────────
 @router.post("/don-hang/{order_id}/huy")
 def order_cancel(order_id: int, request: Request, db: Session = Depends(get_db)):
     user_id = request.session.get("user_id")
@@ -179,5 +185,26 @@ def order_cancel(order_id: int, request: Request, db: Session = Depends(get_db))
 
     order.status = "cancelled"
     db.commit()
-    request.session["flash"] = f"Đã huỷ đơn hàng #{order_id}. Tồn kho đã được hoàn lại."
+    request.session["flash"] = f"Đã huỷ đơn hàng #{order_id}."
+    return RedirectResponse(url=f"/don-hang/{order_id}", status_code=303)
+
+
+# ── POST /don-hang/{id}/da-nhan — User xác nhận đã nhận hàng ────────────────
+@router.post("/don-hang/{order_id}/da-nhan")
+def order_confirm_received(order_id: int, request: Request, db: Session = Depends(get_db)):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return RedirectResponse(url="/dang-nhap", status_code=303)
+
+    order = db.query(Order).filter(Order.id == order_id, Order.user_id == user_id).first()
+    if not order:
+        return RedirectResponse(url="/don-hang", status_code=303)
+
+    if order.status != "shipping":
+        request.session["flash"] = "Chỉ có thể xác nhận khi đơn đang được giao."
+        return RedirectResponse(url=f"/don-hang/{order_id}", status_code=303)
+
+    order.status = "delivered"
+    db.commit()
+    request.session["flash"] = f"Cảm ơn bạn! Đơn hàng #{order_id} đã hoàn tất."
     return RedirectResponse(url=f"/don-hang/{order_id}", status_code=303)
