@@ -7,7 +7,8 @@ Web bán hàng công nghệ dùng FastAPI, Jinja2, SQLAlchemy và SQLite.
 1. Mở PowerShell tại thư mục dự án:
 
 ```powershell
-cd "C:\Users\ASUS\Documents\New project\Btl_Web"
+Dùng lệnh cd + path để trỏ đến folder hoặc tìm vị trí bằng chuột phải <img width="763" height="700" alt="image" src="https://github.com/user-attachments/assets/c347a392-d403-41b5-bd4f-ca535f965816" />
+
 ```
 
 2. Tạo môi trường ảo:
@@ -50,7 +51,3 @@ http://127.0.0.1:8000
 
 - Admin: `admin@techworld.vn` / `admin123`
 - Người dùng demo: `user@techworld.vn` / `user123`
-
-## Ghi chú
-
-Database SQLite `techworld.db` sẽ được tạo và seed dữ liệu mẫu tự động khi chạy lần đầu nếu chưa có danh mục nào.
