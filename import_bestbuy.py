@@ -1,24 +1,15 @@
 """
-import_bestbuy.py — Import dữ liệu Best Buy vào TechWorld database
+import_bestbuy.py — Import dữ liệu Best Buy vào TechWorld (chỉ lấy danh mục công nghệ)
 
 Cách dùng:
     python import_bestbuy.py
 
-Đặt file products.json vào cùng thư mục với script này (thư mục Btl_Web).
-Script sẽ:
-  1. Xoá toàn bộ dữ liệu cũ (sản phẩm, danh mục, thương hiệu)
-  2. Import ~15.000 sản phẩm công nghệ từ Best Buy dataset
-  3. Giữ lại tài khoản admin và demo user
+Đặt file products.json vào cùng thư mục Btl_Web trước khi chạy.
 """
 
-import json
-import re
-import sys
-import os
+import json, re, sys, os
 
-# ── Chạy từ thư mục Btl_Web ──────────────────────────────────────────────────
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
 from database import SessionLocal, create_tables
 from models import Category, Brand, Product, ProductSpec, User, CartItem, Order, OrderItem
 
@@ -26,74 +17,84 @@ from models import Category, Brand, Product, ProductSpec, User, CartItem, Order,
 # CẤU HÌNH
 # ═══════════════════════════════════════════════════════════════════════════════
 
-PRODUCTS_JSON = "products.json"   # Đổi thành đường dẫn đầy đủ nếu cần
+PRODUCTS_JSON = "products.json"   # đổi tên file nếu cần
+USD_TO_VND    = 25_000
+MAX_PRODUCTS  = None              # None = lấy tất cả
 
-# Chỉ lấy các danh mục công nghệ phù hợp với TechWorld
-CATEGORY_MAP = {
-    "Cell Phones":           ("Điện thoại",      "dien-thoai",   "📱", 1),
-    "Computers & Tablets":   ("Laptop & Máy tính","laptop",       "💻", 2),
-    "TV & Home Theater":     ("TV & Màn hình",    "tv-man-hinh",  "📺", 3),
-    "Audio":                 ("Âm thanh",         "am-thanh",     "🔊", 4),
-    "Cameras & Camcorders":  ("Camera",           "camera",       "📷", 5),
-    "Car Electronics & GPS": ("Điện tử xe hơi",  "dien-tu-xe",   "🚗", 6),
-    "Wearable Technology":   ("Thiết bị đeo",     "thiet-bi-deo", "⌚", 7),
-    "Connected Home & Housewares": ("Nhà thông minh", "nha-thong-minh", "🏠", 8),
-    "Video Games":           ("Video Games",      "video-games",  "🎮", 9),
-    "Musical Instruments":   ("Nhạc cụ",          "nhac-cu",      "🎸", 10),
+# ── Danh mục TechWorld (tên VN, icon, thứ tự hiển thị) ───────────────────────
+CATEGORIES_VN = {
+    "dien-thoai":  ("Điện thoại",          "📱", 1),
+    "tablet":      ("Máy tính bảng",        "📲", 2),
+    "laptop":      ("Laptop",               "💻", 3),
+    "man-hinh":    ("Màn hình",             "🖥️", 4),
+    "tai-nghe":    ("Tai nghe & Loa",       "🎧", 5),
+    "phu-kien-dt": ("Phụ kiện điện thoại",  "📦", 6),
+    "phu-kien-pc": ("Phụ kiện máy tính",    "🖱️", 7),
+    "tv":          ("TV",                   "📺", 8),
 }
 
-# Tỷ giá USD → VND (nhân giá USD với hệ số này)
-USD_TO_VND = 25_000
-
-# Giới hạn số sản phẩm import (None = lấy tất cả)
-MAX_PRODUCTS = 5_000
-
-# Chỉ lấy sản phẩm có giá > 0 và có ảnh
-REQUIRE_IMAGE = True
-REQUIRE_PRICE = True
+# ── Quy tắc phân loại: tất cả tên trong list phải có trong category path ─────
+# Ưu tiên từ trên xuống (rule đầu tiên khớp thắng)
+RULES = [
+    # Điện thoại thật (không lấy accessories ở đây)
+    (["Cell Phones", "Unlocked Cell Phones"],            "dien-thoai"),
+    (["Cell Phones", "All Cell Phones with Plans"],      "dien-thoai"),
+    (["Cell Phones", "iPhone"],                          "dien-thoai"),
+    (["Cell Phones", "No-Contract Phones"],              "dien-thoai"),
+    (["Cell Phones", "Refurbished & Pre-Owned Phones"],  "dien-thoai"),
+    # Tablet & iPad
+    (["Computers & Tablets", "Tablets"],                             "tablet"),
+    (["Computers & Tablets", "iPad & Tablet Accessories"],           "tablet"),
+    # Laptop
+    (["Computers & Tablets", "Laptops"],                             "laptop"),
+    # Màn hình PC
+    (["Computers & Tablets", "Monitors"],                            "man-hinh"),
+    # Tai nghe & loa bluetooth
+    (["Audio", "Headphones"],                                        "tai-nghe"),
+    (["Audio", "Bluetooth & Wireless Speakers"],                     "tai-nghe"),
+    # Phụ kiện điện thoại (ốp lưng, sạc, cáp, pin...)
+    (["Cell Phones", "Cell Phone Accessories"],                      "phu-kien-dt"),
+    # Phụ kiện laptop/PC (chuột, bàn phím, USB, túi...)
+    (["Computers & Tablets", "Computer Accessories & Peripherals"],  "phu-kien-pc"),
+    # TV
+    (["TV & Home Theater", "TVs"],                                   "tv"),
+]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+def classify(product_categories: list):
+    names = {c["name"] for c in product_categories}
+    for required, slug in RULES:
+        if all(r in names for r in required):
+            return slug
+    return None
+
+
 def slugify(text: str) -> str:
-    """Chuyển text thành slug URL-safe."""
     text = text.lower().strip()
-    text = re.sub(r"[àáạảãâầấậẩẫăằắặẳẵ]", "a", text)
-    text = re.sub(r"[èéẹẻẽêềếệểễ]", "e", text)
-    text = re.sub(r"[ìíịỉĩ]", "i", text)
-    text = re.sub(r"[òóọỏõôồốộổỗơờớợởỡ]", "o", text)
-    text = re.sub(r"[ùúụủũưừứựửữ]", "u", text)
-    text = re.sub(r"[ỳýỵỷỹ]", "y", text)
-    text = re.sub(r"đ", "d", text)
+    for src, dst in [
+        ("àáạảãâầấậẩẫăằắặẳẵ","a"), ("èéẹẻẽêềếệểễ","e"),
+        ("ìíịỉĩ","i"), ("òóọỏõôồốộổỗơờớợởỡ","o"),
+        ("ùúụủũưừứựửữ","u"), ("ỳýỵỷỹ","y"), ("đ","d"),
+    ]:
+        for ch in src:
+            text = text.replace(ch, dst)
     text = re.sub(r"[^a-z0-9]+", "-", text)
-    text = re.sub(r"-+", "-", text).strip("-")
-    return text
+    return re.sub(r"-+", "-", text).strip("-")
 
 
-def usd_to_vnd(usd: float) -> int:
-    """Làm tròn giá VND đẹp (bội số 1000)."""
-    vnd = int(usd * USD_TO_VND)
-    return round(vnd / 1000) * 1000
+def usd_vnd(usd: float) -> int:
+    return round(int(usd * USD_TO_VND) / 1000) * 1000
 
 
-def clean_html(text: str) -> str:
-    """Loại bỏ HTML entities cơ bản."""
+def clean(text: str) -> str:
     if not text:
         return ""
-    text = text.replace("&#174;", "®").replace("&#8482;", "™")
-    text = text.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
-    return text.strip()
-
-
-def get_top_category(product_categories: list) -> str | None:
-    """Lấy category phù hợp đầu tiên từ danh sách."""
-    for cat in product_categories:
-        name = cat.get("name", "")
-        if name in CATEGORY_MAP:
-            return name
-    return None
+    return (text.replace("&#174;","®").replace("&#8482;","™")
+                .replace("&amp;","&").replace("&lt;","<").replace("&gt;",">").strip())
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -101,23 +102,22 @@ def get_top_category(product_categories: list) -> str | None:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def run_import():
-    # 1. Kiểm tra file
     if not os.path.exists(PRODUCTS_JSON):
-        print(f"[ERROR] Không tìm thấy file '{PRODUCTS_JSON}'")
-        print("        Đặt file products.json vào cùng thư mục với script này.")
+        print(f"[ERROR] Không tìm thấy '{PRODUCTS_JSON}'")
+        print("        Đặt file products.json vào thư mục Btl_Web rồi chạy lại.")
         sys.exit(1)
 
-    print(f"[import] Đọc file {PRODUCTS_JSON}...")
+    print(f"[1/6] Đọc {PRODUCTS_JSON}...")
     with open(PRODUCTS_JSON, encoding="utf-8") as f:
-        raw_products = json.load(f)
-    print(f"[import] Tổng sản phẩm trong file: {len(raw_products):,}")
+        raw = json.load(f)
+    print(f"      → {len(raw):,} bản ghi trong file")
 
     create_tables()
     db = SessionLocal()
 
     try:
-        # 2. Xoá dữ liệu cũ (giữ user)
-        print("[import] Xoá dữ liệu sản phẩm cũ...")
+        # ── Xoá data cũ ──────────────────────────────────────────────────────
+        print("[2/6] Xoá data cũ...")
         db.query(OrderItem).delete()
         db.query(Order).delete()
         db.query(CartItem).delete()
@@ -127,142 +127,108 @@ def run_import():
         db.query(Brand).delete()
         db.commit()
 
-        # 3. Tạo danh mục
-        print("[import] Tạo danh mục...")
-        cat_objects = {}
-        for eng_name, (vn_name, slug, icon, order) in CATEGORY_MAP.items():
-            cat = Category(name=vn_name, slug=slug, icon=icon, display_order=order)
-            db.add(cat)
-            db.flush()
-            cat_objects[eng_name] = cat
+        # ── Tạo danh mục ─────────────────────────────────────────────────────
+        print("[3/6] Tạo danh mục...")
+        cat_map = {}
+        for slug, (name, icon, order) in CATEGORIES_VN.items():
+            cat = Category(name=name, slug=slug, icon=icon, display_order=order)
+            db.add(cat); db.flush()
+            cat_map[slug] = cat
         db.commit()
-        print(f"[import] Tạo {len(cat_objects)} danh mục.")
+        print(f"      → {len(cat_map)} danh mục")
 
-        # 4. Lọc sản phẩm hợp lệ
-        print("[import] Lọc sản phẩm...")
+        # ── Lọc & phân loại ──────────────────────────────────────────────────
+        print("[4/6] Lọc sản phẩm phù hợp...")
         valid = []
         seen_slugs = set()
 
-        for p in raw_products:
-            # Phải có danh mục phù hợp
-            top_cat = get_top_category(p.get("category", []))
-            if not top_cat:
+        for p in raw:
+            price_usd = float(p.get("price") or 0)
+            if price_usd <= 0 or not p.get("image"):
                 continue
-
-            # Giá hợp lệ
-            price_usd = p.get("price", 0)
-            if REQUIRE_PRICE and (not price_usd or price_usd <= 0):
+            cat_slug = classify(p.get("category", []))
+            if not cat_slug:
                 continue
-
-            # Có ảnh
-            if REQUIRE_IMAGE and not p.get("image"):
-                continue
-
-            # Slug unique
-            raw_slug = slugify(p.get("name", ""))[:80] + "-" + str(p.get("sku", ""))
+            raw_slug = slugify(p.get("name",""))[:70] + "-" + str(p.get("sku",""))
             if raw_slug in seen_slugs:
                 continue
             seen_slugs.add(raw_slug)
-
-            valid.append((p, top_cat, raw_slug))
-
+            valid.append((p, cat_slug, raw_slug))
             if MAX_PRODUCTS and len(valid) >= MAX_PRODUCTS:
                 break
 
-        print(f"[import] Sản phẩm hợp lệ: {len(valid):,}")
+        print(f"      → {len(valid):,} sản phẩm hợp lệ")
 
-        # 5. Tạo brand objects (lazy)
-        brand_objects = {}
+        from collections import Counter
+        by_cat = Counter(s for _, s, _ in valid)
+        for slug, cnt in sorted(by_cat.items(), key=lambda x: -x[1]):
+            print(f"         {CATEGORIES_VN[slug][0]:30s}: {cnt:,}")
 
-        def get_or_create_brand(name: str):
-            if not name:
-                name = "Unknown"
-            if name not in brand_objects:
+        # ── Import ────────────────────────────────────────────────────────────
+        print("[5/6] Import vào database...")
+        brand_map = {}
+
+        def get_brand(name):
+            name = (name or "Unknown").strip()
+            if name not in brand_map:
                 slug = slugify(name)[:50]
-                # Tránh slug trùng
-                final_slug = slug
-                counter = 2
-                while any(b.slug == final_slug for b in brand_objects.values()):
-                    final_slug = f"{slug}-{counter}"
-                    counter += 1
-                brand = Brand(name=name, slug=final_slug)
-                db.add(brand)
-                db.flush()
-                brand_objects[name] = brand
-            return brand_objects[name]
+                final, i = slug, 2
+                while any(b.slug == final for b in brand_map.values()):
+                    final = f"{slug}-{i}"; i += 1
+                b = Brand(name=name, slug=final)
+                db.add(b); db.flush()
+                brand_map[name] = b
+            return brand_map[name]
 
-        # 6. Import sản phẩm
-        print("[import] Import sản phẩm...")
         count = 0
-
-        for p, top_cat, slug in valid:
-            category = cat_objects[top_cat]
-            brand = get_or_create_brand(p.get("manufacturer", ""))
-
+        for p, cat_slug, slug in valid:
             price_usd = float(p.get("price", 0))
-            price_vnd = usd_to_vnd(price_usd)
-            # Giả lập giá gốc +15% cho sản phẩm có vẻ đang sale
-            original_vnd = usd_to_vnd(price_usd * 1.15) if price_usd > 20 else None
-
             product = Product(
-                name=clean_html(p.get("name", ""))[:200],
-                slug=slug,
-                description=clean_html(p.get("description", "")),
-                price=price_vnd,
-                original_price=original_vnd,
-                image_url=p.get("image", ""),
-                stock=10,          # mặc định tồn kho 10
-                rating=4.0,        # mặc định rating 4.0
-                review_count=0,
-                is_featured=(price_usd > 200),   # sản phẩm > $200 → nổi bật
-                category_id=category.id,
-                brand_id=brand.id,
+                name           = clean(p.get("name",""))[:200],
+                slug           = slug,
+                description    = clean(p.get("description","")),
+                price          = usd_vnd(price_usd),
+                original_price = usd_vnd(price_usd * 1.15) if price_usd > 20 else None,
+                image_url      = p.get("image",""),
+                stock          = 15,
+                rating         = 4.0,
+                review_count   = 0,
+                is_featured    = price_usd > 150,
+                category_id    = cat_map[cat_slug].id,
+                brand_id       = get_brand(p.get("manufacturer","")).id,
             )
-            db.add(product)
-            db.flush()
+            db.add(product); db.flush()
 
-            # Specs từ các field có sẵn
-            specs = []
-            if p.get("model"):
-                specs.append(("Model", p["model"]))
-            if p.get("upc"):
-                specs.append(("UPC", p["upc"]))
-            specs.append(("Danh mục gốc", top_cat))
-
-            for spec_name, spec_value in specs:
-                db.add(ProductSpec(
-                    product_id=product.id,
-                    spec_name=spec_name,
-                    spec_value=str(spec_value)[:200],
-                ))
-
+            for sname, sval in [("Model", p.get("model")), ("UPC", p.get("upc"))]:
+                if sval:
+                    db.add(ProductSpec(product_id=product.id,
+                                       spec_name=sname, spec_value=str(sval)[:200]))
             count += 1
             if count % 500 == 0:
                 db.commit()
-                print(f"[import]   {count:,}/{len(valid):,} sản phẩm...")
+                print(f"         {count:,}/{len(valid):,}...")
 
         db.commit()
-        print(f"[import] Hoàn thành: {count:,} sản phẩm, {len(brand_objects)} thương hiệu.")
+        print(f"      → {count:,} sản phẩm | {len(brand_map)} thương hiệu")
 
-        # 7. Đảm bảo admin tồn tại
+        # ── Tài khoản ─────────────────────────────────────────────────────────
+        print("[6/6] Tạo tài khoản admin/demo...")
         from config import DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_NAME
         if not db.query(User).filter(User.email == DEFAULT_ADMIN_EMAIL).first():
             admin = User(full_name=DEFAULT_ADMIN_NAME, email=DEFAULT_ADMIN_EMAIL, is_admin=True)
-            admin.set_password(DEFAULT_ADMIN_PASSWORD)
-            db.add(admin)
-
+            admin.set_password(DEFAULT_ADMIN_PASSWORD); db.add(admin)
         if not db.query(User).filter(User.email == "user@techworld.vn").first():
             demo = User(full_name="Nguyễn Văn A", email="user@techworld.vn",
                         phone="0901234567", is_admin=False)
-            demo.set_password("user123")
-            db.add(demo)
-
+            demo.set_password("user123"); db.add(demo)
         db.commit()
-        print("[import] Tài khoản admin và demo đã sẵn sàng.")
-        print("[import] ✓ Import thành công!")
+
         print()
-        print("  Chạy app: python -m uvicorn main:app --reload")
-        print("  Admin:    http://127.0.0.1:8000/admin/")
+        print("✓ Import hoàn tất!")
+        print(f"  Sản phẩm   : {count:,}")
+        print(f"  Thương hiệu: {len(brand_map)}")
+        print()
+        print("  Chạy app: python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000")
 
     finally:
         db.close()

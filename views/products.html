@@ -1,30 +1,70 @@
 {% extends "base.html" %}
 {% block title %}Sản phẩm - TechWorld{% endblock %}
 {% block content %}
+<style>
+/* ── Brand list collapse ── */
+.brand-list { max-height: 220px; overflow: hidden; transition: max-height .3s ease; }
+.brand-list.expanded { max-height: 9999px; }
+.toggle-brands {
+  background: none; border: none; cursor: pointer;
+  color: var(--primary); font-weight: 700; font-size: 13px;
+  padding: 6px 0; display: flex; align-items: center; gap: 4px;
+}
+
+/* ── Pagination compact ── */
+.pagination { flex-wrap: wrap; }
+.pagination a, .pagination span {
+  min-width: 36px; height: 36px; font-size: 14px;
+  display: grid; place-items: center;
+  border-radius: var(--radius);
+  background: #fff; border: 1px solid var(--line);
+}
+.pagination a.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.pagination a:hover:not(.active) { background: var(--surface-soft); }
+.pagination span { color: var(--muted); border-color: transparent; background: none; }
+</style>
+
 <section class="container catalog-layout">
   <aside class="filter-panel">
     <h2>Bộ lọc</h2>
     <form method="get" action="/san-pham">
       <label>Từ khóa</label>
       <input name="q" value="{{ q if q is defined else '' }}" placeholder="Tên sản phẩm">
+
       <label>Danh mục</label>
       {% for category in categories if categories is defined %}
         <label class="check-row">
-          <input type="checkbox" name="category" value="{{ category.slug }}"> {{ category.name }}
+          <input type="checkbox" name="category" value="{{ category.slug }}"
+            {% if category.slug in (request.query_params.getlist('category') or []) %}checked{% endif %}>
+          {{ category.name }}
         </label>
       {% endfor %}
+
       <label>Thương hiệu</label>
-      {% for brand in brands if brands is defined %}
-        <label class="check-row">
-          <input type="checkbox" name="brand" value="{{ brand.slug }}"> {{ brand.name }}
-        </label>
-      {% endfor %}
-      <label>Khoảng giá</label>
+      <div class="brand-list" id="brand-list">
+        {% for brand in brands if brands is defined %}
+          <label class="check-row">
+            <input type="checkbox" name="brand" value="{{ brand.slug }}"
+              {% if brand.slug in (request.query_params.getlist('brand') or []) %}checked{% endif %}>
+            {{ brand.name }}
+          </label>
+        {% endfor %}
+      </div>
+      {% if brands is defined and brands|length > 8 %}
+        <button type="button" class="toggle-brands" id="toggle-brands" onclick="toggleBrands()">
+          <span id="toggle-label">▼ Xem thêm ({{ brands|length - 8 }} hãng)</span>
+        </button>
+      {% endif %}
+
+      <label>Khoảng giá (₫)</label>
       <div class="price-range">
-        <input name="min_price" type="number" placeholder="Từ">
-        <input name="max_price" type="number" placeholder="Đến">
+        <input name="min_price" type="number" placeholder="Từ"
+          value="{{ request.query_params.get('min_price') or '' }}">
+        <input name="max_price" type="number" placeholder="Đến"
+          value="{{ request.query_params.get('max_price') or '' }}">
       </div>
       <button class="btn btn-primary" type="submit">Áp dụng</button>
+      <a class="btn btn-outline" href="/san-pham">Xoá bộ lọc</a>
     </form>
   </aside>
 
@@ -32,21 +72,16 @@
     <div class="catalog-toolbar">
       <div>
         <h1>{{ heading if heading is defined else "Tất cả sản phẩm" }}</h1>
-        <p>{{ total if total is defined else (products|length if products is defined else 0) }} sản phẩm phù hợp</p>
+        <p>{{ total if total is defined else 0 }} sản phẩm phù hợp</p>
       </div>
       <form method="get">
-        {# Giữ lại các filter param khi đổi sort #}
         {% if q is defined and q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
-        {% if request.query_params.getlist('category') %}
-          {% for cat in request.query_params.getlist('category') %}
-            <input type="hidden" name="category" value="{{ cat }}">
-          {% endfor %}
-        {% endif %}
-        {% if request.query_params.getlist('brand') %}
-          {% for b in request.query_params.getlist('brand') %}
-            <input type="hidden" name="brand" value="{{ b }}">
-          {% endfor %}
-        {% endif %}
+        {% for cat in request.query_params.getlist('category') %}
+          <input type="hidden" name="category" value="{{ cat }}">
+        {% endfor %}
+        {% for b in request.query_params.getlist('brand') %}
+          <input type="hidden" name="brand" value="{{ b }}">
+        {% endfor %}
         {% if request.query_params.get('min_price') %}
           <input type="hidden" name="min_price" value="{{ request.query_params.get('min_price') }}">
         {% endif %}
@@ -54,11 +89,11 @@
           <input type="hidden" name="max_price" value="{{ request.query_params.get('max_price') }}">
         {% endif %}
         <select name="sort" onchange="this.form.submit()">
-          <option value="newest" {{ 'selected' if sort is defined and sort == 'newest' else '' }}>Mới nhất</option>
-          <option value="price_asc" {{ 'selected' if sort is defined and sort == 'price_asc' else '' }}>Giá thấp đến cao</option>
-          <option value="price_desc" {{ 'selected' if sort is defined and sort == 'price_desc' else '' }}>Giá cao đến thấp</option>
-          <option value="rating" {{ 'selected' if sort is defined and sort == 'rating' else '' }}>Đánh giá cao</option>
-          <option value="popular" {{ 'selected' if sort is defined and sort == 'popular' else '' }}>Phổ biến nhất</option>
+          <option value="newest"     {{ 'selected' if sort is defined and sort == 'newest' }}>Mới nhất</option>
+          <option value="price_asc"  {{ 'selected' if sort is defined and sort == 'price_asc' }}>Giá thấp → cao</option>
+          <option value="price_desc" {{ 'selected' if sort is defined and sort == 'price_desc' }}>Giá cao → thấp</option>
+          <option value="rating"     {{ 'selected' if sort is defined and sort == 'rating' }}>Đánh giá cao</option>
+          <option value="popular"    {{ 'selected' if sort is defined and sort == 'popular' }}>Phổ biến nhất</option>
         </select>
       </form>
     </div>
@@ -71,32 +106,73 @@
       {% endfor %}
     </div>
 
+    {# ── Phân trang rút gọn ── #}
     {% if pages is defined and pages > 1 %}
-      <nav class="pagination">
-        {# Xây dựng query string giữ filter cho từng trang #}
-        {% set qs_parts = [] %}
-        {% if q is defined and q %}{% set _ = qs_parts.append('q=' ~ q) %}{% endif %}
-        {% if sort is defined and sort %}{% set _ = qs_parts.append('sort=' ~ sort) %}{% endif %}
-        {% for cat in request.query_params.getlist('category') %}
-          {% set _ = qs_parts.append('category=' ~ cat) %}
-        {% endfor %}
-        {% for b in request.query_params.getlist('brand') %}
-          {% set _ = qs_parts.append('brand=' ~ b) %}
-        {% endfor %}
-        {% if request.query_params.get('min_price') %}
-          {% set _ = qs_parts.append('min_price=' ~ request.query_params.get('min_price')) %}
-        {% endif %}
-        {% if request.query_params.get('max_price') %}
-          {% set _ = qs_parts.append('max_price=' ~ request.query_params.get('max_price')) %}
-        {% endif %}
-        {% set base_qs = qs_parts | join('&') %}
+      {% set qs_parts = [] %}
+      {% if q is defined and q %}{% set _ = qs_parts.append('q=' ~ q) %}{% endif %}
+      {% if sort is defined and sort %}{% set _ = qs_parts.append('sort=' ~ sort) %}{% endif %}
+      {% for cat in request.query_params.getlist('category') %}{% set _ = qs_parts.append('category=' ~ cat) %}{% endfor %}
+      {% for b in request.query_params.getlist('brand') %}{% set _ = qs_parts.append('brand=' ~ b) %}{% endfor %}
+      {% if request.query_params.get('min_price') %}{% set _ = qs_parts.append('min_price=' ~ request.query_params.get('min_price')) %}{% endif %}
+      {% if request.query_params.get('max_price') %}{% set _ = qs_parts.append('max_price=' ~ request.query_params.get('max_price')) %}{% endif %}
+      {% set bqs = qs_parts | join('&') %}
+      {% set sep = '&' if bqs else '' %}
 
-        {% for p in range(1, pages + 1) %}
-          <a class="{{ 'active' if p == page else '' }}"
-             href="?{{ base_qs }}{{ '&' if base_qs else '' }}page={{ p }}">{{ p }}</a>
+      <nav class="pagination" aria-label="Phân trang">
+        {# Nút « Trước #}
+        {% if page > 1 %}
+          <a href="?{{ bqs }}{{ sep }}page={{ page - 1 }}" title="Trang trước">‹</a>
+        {% endif %}
+
+        {# Logic hiển thị: 1 ... (page-1) page (page+1) ... last #}
+        {% set show_first = true %}
+        {% set show_last  = true %}
+
+        {# Trang 1 luôn hiện #}
+        <a class="{{ 'active' if page == 1 }}" href="?{{ bqs }}{{ sep }}page=1">1</a>
+
+        {# Dấu ... đầu nếu page > 3 #}
+        {% if page > 3 %}<span>…</span>{% endif %}
+
+        {# Trang xung quanh trang hiện tại #}
+        {% for p in range(2, pages) %}
+          {% if p >= page - 1 and p <= page + 1 %}
+            <a class="{{ 'active' if p == page }}" href="?{{ bqs }}{{ sep }}page={{ p }}">{{ p }}</a>
+          {% endif %}
         {% endfor %}
+
+        {# Dấu ... cuối nếu page < pages - 2 #}
+        {% if page < pages - 2 %}<span>…</span>{% endif %}
+
+        {# Trang cuối luôn hiện #}
+        {% if pages > 1 %}
+          <a class="{{ 'active' if page == pages }}" href="?{{ bqs }}{{ sep }}page={{ pages }}">{{ pages }}</a>
+        {% endif %}
+
+        {# Nút Sau » #}
+        {% if page < pages %}
+          <a href="?{{ bqs }}{{ sep }}page={{ page + 1 }}" title="Trang sau">›</a>
+        {% endif %}
       </nav>
+
+      <p style="text-align:center;color:var(--muted);font-size:13px;margin-top:8px;">
+        Trang {{ page }} / {{ pages }}
+      </p>
     {% endif %}
   </section>
 </section>
+
+<script>
+function toggleBrands() {
+  const list  = document.getElementById('brand-list');
+  const label = document.getElementById('toggle-label');
+  const total = {{ brands|length if brands is defined else 0 }};
+  const hidden = total - 8;
+  if (list.classList.toggle('expanded')) {
+    label.textContent = '▲ Thu gọn';
+  } else {
+    label.textContent = '▼ Xem thêm (' + hidden + ' hãng)';
+  }
+}
+</script>
 {% endblock %}
