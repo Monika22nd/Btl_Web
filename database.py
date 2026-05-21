@@ -51,3 +51,14 @@ def create_tables():
     # Import models here so Base knows about them before create_all()
     import models  # noqa: F401
     Base.metadata.create_all(bind=engine)
+
+
+def migrate_schema():
+    """Apply small SQLite schema updates that create_all() cannot add."""
+    with engine.begin() as conn:
+        order_columns = {
+            row[1]
+            for row in conn.exec_driver_sql("PRAGMA table_info(orders)").fetchall()
+        }
+        if "recipient_name" not in order_columns:
+            conn.exec_driver_sql("ALTER TABLE orders ADD COLUMN recipient_name VARCHAR")

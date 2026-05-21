@@ -11,17 +11,22 @@
   <style>
     /* ── Navbar cuộn ngang, không bị cắt ── */
     .category-scroll {
-      overflow-x: auto;
+      overflow: hidden;
       white-space: nowrap;
       display: flex;
       flex-wrap: nowrap;
-      gap: 4px;
+      justify-content: space-between;
+      gap: 6px;
       scrollbar-width: none;
     }
     .category-scroll::-webkit-scrollbar { display: none; }
     .category-scroll a {
       display: inline-flex;
-      flex-shrink: 0;
+      flex: 1 1 auto;
+      justify-content: center;
+      min-width: 0;
+      padding: 0 8px;
+      font-size: 14px;
       white-space: nowrap;
     }
   </style>
@@ -83,9 +88,15 @@
     <div class="category-bar">
       <div class="container category-scroll">
         {% for cat in nav_categories %}
-          <a href="/danh-muc/{{ cat.slug if cat.slug is defined else cat['slug'] }}">
+          {% set slug = cat.slug if cat.slug is defined else cat['slug'] %}
+          {% set name = cat.name if cat.name is defined else cat['name'] %}
+          <a href="/danh-muc/{{ slug }}">
             <span>{{ cat.icon if cat.icon is defined else cat['icon'] }}</span>
-            {{ cat.name if cat.name is defined else cat['name'] }}
+            {% if slug == 'phu-kien-dt' %}Phụ kiện ĐT
+            {% elif slug == 'phu-kien-pc' %}Phụ kiện PC
+            {% elif slug == 'tai-nghe' %}Tai nghe
+            {% elif slug == 'tablet' %}Tablet
+            {% else %}{{ name }}{% endif %}
           </a>
         {% endfor %}
       </div>

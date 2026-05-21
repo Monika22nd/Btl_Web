@@ -12,7 +12,7 @@ from config import (
     STATIC_DIR, TEMPLATES_DIR,
     format_vnd,
 )
-from database import create_tables
+from database import create_tables, migrate_schema
 
 
 # ── Lifespan: runs once on startup ───────────────────────────────────────────
@@ -20,6 +20,7 @@ from database import create_tables
 async def lifespan(app: FastAPI):
     # 1. Create all DB tables (no-op if they already exist)
     create_tables()
+    migrate_schema()
 
     # 2. Seed sample data if the DB is empty
     from database import SessionLocal
