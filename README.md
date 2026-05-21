@@ -29,10 +29,11 @@ Nếu PowerShell chặn script, chạy lệnh này một lần rồi kích hoạ
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-4. Cài thư viện:
+4. Cài thư viện và nhập data:
 
 ```powershell
 pip install -r requirements.txt
+python import_bestbuy.py
 ```
 
 5. Chạy web:
