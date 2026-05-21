@@ -7,8 +7,8 @@ Web bán hàng công nghệ dùng FastAPI, Jinja2, SQLAlchemy và SQLite.
 1. Mở PowerShell tại thư mục dự án:
 
 ```powershell
-Dùng lệnh cd + path để trỏ đến folder hoặc tìm vị trí bằng chuột phải <img width="763" height="700" alt="image" src="https://github.com/user-attachments/assets/c347a392-d403-41b5-bd4f-ca535f965816" />
-
+Dùng lệnh cd + path để trỏ đến folder hoặc tìm vị trí folder rồi open in terminal bằng chuột phải
+https://github.com/user-attachments/assets/c347a392-d403-41b5-bd4f-ca535f965816
 ```
 
 2. Tạo môi trường ảo:
