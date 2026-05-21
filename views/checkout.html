@@ -4,8 +4,7 @@
 <section class="container checkout-layout">
   <form class="checkout-form" action="/thanh-toan" method="post">
     <h1>Thông tin giao hàng</h1>
-    <label>Họ và tên</label>
-    <input name="full_name" required value="{{ current_user.full_name if current_user is defined and current_user else '' }}">
+    {% if error %}<p class="empty-state">{{ error }}</p>{% endif %}
     <label>Số điện thoại</label>
     <input name="phone" required value="{{ current_user.phone if current_user is defined and current_user else '' }}">
     <label>Địa chỉ nhận hàng</label>
@@ -17,9 +16,15 @@
   <aside class="summary-box">
     <h2>Đơn hàng</h2>
     {% for item in cart_items if cart_items is defined %}
-      <div class="summary-line"><span>{{ item.product.name }} x{{ item.quantity }}</span><strong>{{ "{:,.0f}".format(item.product.price * item.quantity).replace(",", ".") }}đ</strong></div>
+      <div class="summary-line">
+        <span>{{ item.product.name }} x{{ item.quantity }}</span>
+        <strong>{{ "{:,.0f}".format(item.product.price * item.quantity).replace(",", ".") }}đ</strong>
+      </div>
     {% endfor %}
-    <div class="summary-total"><span>Tổng cộng</span><strong>{{ "{:,.0f}".format(cart_total if cart_total is defined else 0).replace(",", ".") }}đ</strong></div>
+    <div class="summary-total">
+      <span>Tổng cộng</span>
+      <strong>{{ "{:,.0f}".format(cart_total if cart_total is defined else 0).replace(",", ".") }}đ</strong>
+    </div>
   </aside>
 </section>
 {% endblock %}

@@ -9,11 +9,15 @@
       <input name="q" value="{{ q if q is defined else '' }}" placeholder="Tên sản phẩm">
       <label>Danh mục</label>
       {% for category in categories if categories is defined %}
-        <label class="check-row"><input type="checkbox" name="category" value="{{ category.slug }}"> {{ category.name }}</label>
+        <label class="check-row">
+          <input type="checkbox" name="category" value="{{ category.slug }}"> {{ category.name }}
+        </label>
       {% endfor %}
       <label>Thương hiệu</label>
       {% for brand in brands if brands is defined %}
-        <label class="check-row"><input type="checkbox" name="brand" value="{{ brand.slug }}"> {{ brand.name }}</label>
+        <label class="check-row">
+          <input type="checkbox" name="brand" value="{{ brand.slug }}"> {{ brand.name }}
+        </label>
       {% endfor %}
       <label>Khoảng giá</label>
       <div class="price-range">
@@ -23,6 +27,7 @@
       <button class="btn btn-primary" type="submit">Áp dụng</button>
     </form>
   </aside>
+
   <section class="catalog-main">
     <div class="catalog-toolbar">
       <div>
@@ -30,14 +35,34 @@
         <p>{{ total if total is defined else (products|length if products is defined else 0) }} sản phẩm phù hợp</p>
       </div>
       <form method="get">
+        {# Giữ lại các filter param khi đổi sort #}
+        {% if q is defined and q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+        {% if request.query_params.getlist('category') %}
+          {% for cat in request.query_params.getlist('category') %}
+            <input type="hidden" name="category" value="{{ cat }}">
+          {% endfor %}
+        {% endif %}
+        {% if request.query_params.getlist('brand') %}
+          {% for b in request.query_params.getlist('brand') %}
+            <input type="hidden" name="brand" value="{{ b }}">
+          {% endfor %}
+        {% endif %}
+        {% if request.query_params.get('min_price') %}
+          <input type="hidden" name="min_price" value="{{ request.query_params.get('min_price') }}">
+        {% endif %}
+        {% if request.query_params.get('max_price') %}
+          <input type="hidden" name="max_price" value="{{ request.query_params.get('max_price') }}">
+        {% endif %}
         <select name="sort" onchange="this.form.submit()">
-          <option value="">Sắp xếp</option>
-          <option value="price_asc">Giá thấp đến cao</option>
-          <option value="price_desc">Giá cao đến thấp</option>
-          <option value="newest">Mới nhất</option>
+          <option value="newest" {{ 'selected' if sort is defined and sort == 'newest' else '' }}>Mới nhất</option>
+          <option value="price_asc" {{ 'selected' if sort is defined and sort == 'price_asc' else '' }}>Giá thấp đến cao</option>
+          <option value="price_desc" {{ 'selected' if sort is defined and sort == 'price_desc' else '' }}>Giá cao đến thấp</option>
+          <option value="rating" {{ 'selected' if sort is defined and sort == 'rating' else '' }}>Đánh giá cao</option>
+          <option value="popular" {{ 'selected' if sort is defined and sort == 'popular' else '' }}>Phổ biến nhất</option>
         </select>
       </form>
     </div>
+
     <div class="product-grid">
       {% for product in products if products is defined %}
         {% include "partials/product_card.html" %}
@@ -45,10 +70,30 @@
         <p class="empty-state">Chưa có sản phẩm để hiển thị.</p>
       {% endfor %}
     </div>
+
     {% if pages is defined and pages > 1 %}
       <nav class="pagination">
+        {# Xây dựng query string giữ filter cho từng trang #}
+        {% set qs_parts = [] %}
+        {% if q is defined and q %}{% set _ = qs_parts.append('q=' ~ q) %}{% endif %}
+        {% if sort is defined and sort %}{% set _ = qs_parts.append('sort=' ~ sort) %}{% endif %}
+        {% for cat in request.query_params.getlist('category') %}
+          {% set _ = qs_parts.append('category=' ~ cat) %}
+        {% endfor %}
+        {% for b in request.query_params.getlist('brand') %}
+          {% set _ = qs_parts.append('brand=' ~ b) %}
+        {% endfor %}
+        {% if request.query_params.get('min_price') %}
+          {% set _ = qs_parts.append('min_price=' ~ request.query_params.get('min_price')) %}
+        {% endif %}
+        {% if request.query_params.get('max_price') %}
+          {% set _ = qs_parts.append('max_price=' ~ request.query_params.get('max_price')) %}
+        {% endif %}
+        {% set base_qs = qs_parts | join('&') %}
+
         {% for p in range(1, pages + 1) %}
-          <a class="{{ 'active' if p == page else '' }}" href="?page={{ p }}">{{ p }}</a>
+          <a class="{{ 'active' if p == page else '' }}"
+             href="?{{ base_qs }}{{ '&' if base_qs else '' }}page={{ p }}">{{ p }}</a>
         {% endfor %}
       </nav>
     {% endif %}
