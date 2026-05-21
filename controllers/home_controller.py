@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from config import APP_NAME, ITEMS_PER_PAGE
 from database import get_db
 from models import Category, Brand, Product, CartItem
+from controllers.catalog_helpers import get_filter_brands, get_nav_categories
 
 router = APIRouter()
 templates = Jinja2Templates(directory="views")
@@ -36,7 +37,7 @@ def _parse_int(value):
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request, db: Session = Depends(get_db)):
     ctx = _session_ctx(request, db)
-    categories = db.query(Category).order_by(Category.display_order).all()
+    categories = get_nav_categories(db)
 
     featured_products = (
         db.query(Product)
@@ -59,7 +60,7 @@ def home(request: Request, db: Session = Depends(get_db)):
         .limit(8).all()
     )
 
-    brands = db.query(Brand).all()
+    brands = get_filter_brands(db)
     flash = request.session.pop("flash", None)
 
     return templates.TemplateResponse("home.html", {
@@ -128,8 +129,9 @@ def search(
     return templates.TemplateResponse("products.html", {
         "request": request, **ctx,
         "products": products,
-        "categories": db.query(Category).order_by(Category.display_order).all(),
-        "brands": db.query(Brand).order_by(Brand.name).all(),
+        "categories": get_nav_categories(db),
+        "brands": get_filter_brands(db, category_slugs),
+        "current_category_slug": category_slugs[0] if category_slugs else "",
         "q": q, "sort": sort,
         "page": page, "pages": total_pages, "total": total,
         "heading": f'Kết quả: "{q}"' if q else "Tất cả sản phẩm",
@@ -182,8 +184,9 @@ def category_page(
     return templates.TemplateResponse("products.html", {
         "request": request, **ctx,
         "products": products,
-        "categories": db.query(Category).order_by(Category.display_order).all(),
-        "brands": db.query(Brand).order_by(Brand.name).all(),
+        "categories": get_nav_categories(db),
+        "brands": get_filter_brands(db, [category.slug]),
+        "current_category_slug": category.slug,
         "sort": sort, "page": page, "pages": total_pages, "total": total,
         "heading": category.name,
     })

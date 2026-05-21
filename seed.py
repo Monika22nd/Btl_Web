@@ -15,10 +15,11 @@ from models import Category, Brand, Product, ProductSpec, User
 CATEGORIES = [
     {"name": "Điện thoại",   "slug": "dien-thoai",  "icon": "📱", "display_order": 1},
     {"name": "Laptop",        "slug": "laptop",       "icon": "💻", "display_order": 2},
-    {"name": "Máy tính bảng","slug": "may-tinh-bang","icon": "📲", "display_order": 3},
-    {"name": "Tai nghe",      "slug": "tai-nghe",     "icon": "🎧", "display_order": 4},
-    {"name": "Đồng hồ",      "slug": "dong-ho",      "icon": "⌚", "display_order": 5},
-    {"name": "Phụ kiện",     "slug": "phu-kien",     "icon": "🔌", "display_order": 6},
+    {"name": "TV",            "slug": "tv",           "icon": "📺", "display_order": 3},
+    {"name": "Máy tính bảng","slug": "may-tinh-bang","icon": "📲", "display_order": 4},
+    {"name": "Tai nghe",      "slug": "tai-nghe",     "icon": "🎧", "display_order": 5},
+    {"name": "Đồng hồ",      "slug": "dong-ho",      "icon": "⌚", "display_order": 6},
+    {"name": "Phụ kiện",     "slug": "phu-kien",     "icon": "🔌", "display_order": 7},
 ]
 
 BRANDS = [

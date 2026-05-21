@@ -27,7 +27,8 @@
 </style>
 
 {# Top brands theo danh mục hiện tại #}
-{% set cat_slug = request.query_params.get('category') or
+{% set cat_slug = (current_category_slug if current_category_slug is defined else '') or
+                  request.query_params.get('category') or
                   (request.query_params.getlist('category')|first) or '' %}
 
 {% set brand_presets = {
@@ -41,7 +42,7 @@
   'phu-kien-pc': ['Logitech','Microsoft','Samsung','Kingston','Corsair'],
 } %}
 
-{% set top_brands = brand_presets.get(cat_slug, []) %}
+{% set top_brands = brands | map(attribute='name') | list if brands is defined else [] %}
 
 <section class="container catalog-layout">
   <aside class="filter-panel">

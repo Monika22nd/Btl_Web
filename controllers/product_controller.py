@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from config import APP_NAME, ITEMS_PER_PAGE
 from database import get_db
 from models import Product, ProductSpec, Category, Brand, CartItem
+from controllers.catalog_helpers import get_filter_brands, get_nav_categories
 
 router = APIRouter()
 templates = Jinja2Templates(directory="views")
@@ -86,8 +87,9 @@ def product_list(
     return templates.TemplateResponse("products.html", {
         "request": request, **ctx,
         "products": products,
-        "categories": db.query(Category).order_by(Category.display_order).all(),
-        "brands": db.query(Brand).order_by(Brand.name).all(),
+        "categories": get_nav_categories(db),
+        "brands": get_filter_brands(db),
+        "current_category_slug": "",
         "q": q, "sort": sort,
         "page": page, "pages": total_pages, "total": total,
         "heading": "🔥 Đang giảm giá" if sale == "1" else "Tất cả sản phẩm",
