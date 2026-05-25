@@ -26,6 +26,9 @@ def _product_dict(p) -> dict:
     discount = 0
     if p.original_price and p.original_price > p.price:
         discount = round((1 - p.price / p.original_price) * 100)
+    image_url = p.image_url or ""
+    if image_url.startswith("http://"):
+        image_url = "https://" + image_url[len("http://"):]
     return {
         "id":             p.id,
         "name":           p.name,
@@ -33,7 +36,7 @@ def _product_dict(p) -> dict:
         "price":          p.price,
         "original_price": p.original_price,
         "discount":       discount,
-        "image_url":      p.image_url or "",
+        "image_url":      image_url,
         "rating":         float(p.rating or 0),
         "review_count":   int(p.review_count or 0),
         "stock":          p.stock,

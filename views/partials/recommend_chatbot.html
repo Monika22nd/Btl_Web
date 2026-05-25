@@ -392,22 +392,35 @@
       scrollDiv.className = 'tw-products-scroll';
       products.forEach(p => {
         const card = document.createElement('a');
+        const name = String(p.name || '');
+        const safeName = escapeHtml(name);
+        const safeAttrName = escapeAttr(name);
+        const initials = escapeHtml((name || 'TW').substring(0,2).toUpperCase());
+        const safeImageUrl = escapeAttr(p.image_url || '');
         card.className = 'tw-prod-card';
         card.href = p.url;
         card.innerHTML = `
           <div class="tw-prod-img">
-            ${p.image_url
-              ? `<img src="${p.image_url}" alt="${p.name}" loading="lazy">`
-              : `<span>${p.name.substring(0,2).toUpperCase()}</span>`
+            ${safeImageUrl
+              ? `<img src="${safeImageUrl}" alt="${safeAttrName}" loading="lazy">`
+              : `<span>${initials}</span>`
             }
           </div>
           <div class="tw-prod-body">
-            <div class="tw-prod-name">${p.name}</div>
+            <div class="tw-prod-name">${safeName}</div>
             <div class="tw-prod-price">
-              ${p.formatted_price}
+              ${escapeHtml(p.formatted_price || '')}
               ${p.discount > 0 ? `<span class="tw-prod-discount">-${p.discount}%</span>` : ''}
             </div>
           </div>`;
+        const img = card.querySelector('img');
+        if (img) {
+          img.addEventListener('error', () => {
+            const fallback = document.createElement('span');
+            fallback.textContent = initials;
+            img.replaceWith(fallback);
+          }, { once: true });
+        }
         scrollDiv.appendChild(card);
       });
       messages.appendChild(scrollDiv);
@@ -523,7 +536,11 @@
   }
 
   function escapeHtml(str) {
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function escapeAttr(str) {
+    return escapeHtml(str).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
 
   // ── Event listeners ─────────────────────────────────────────────────────────

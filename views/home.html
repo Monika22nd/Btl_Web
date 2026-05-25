@@ -37,21 +37,28 @@
 
     document.getElementById('tw-personal-section').style.display = 'block';
     const row = document.getElementById('tw-personal-products');
+    const escapeHtml = (value) => String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escapeAttr = (value) => escapeHtml(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
     data.products.forEach((p) => {
+      const name = String(p.name || '');
+      const safeName = escapeHtml(name);
+      const safeAttrName = escapeAttr(name);
+      const initials = escapeHtml((name || 'TW').substring(0, 2).toUpperCase());
+      const safeImageUrl = escapeAttr(p.image_url || '');
       const discount = p.discount > 0 ? `<em>-${p.discount}%</em>` : '';
-      const img = p.image_url
-        ? `<img src="${p.image_url}" alt="${p.name}" loading="lazy">`
-        : `<span>${p.name.substring(0, 2).toUpperCase()}</span>`;
+      const img = safeImageUrl
+        ? `<img src="${safeImageUrl}" alt="${safeAttrName}" loading="lazy" onerror="this.outerHTML='<span>${initials}</span>'">`
+        : `<span>${initials}</span>`;
 
       row.innerHTML += `
         <article class="product-card">
           <a class="product-image" href="${p.url}">${img}${discount}</a>
           <div class="product-body">
-            <a class="product-name" href="${p.url}">${p.name}</a>
+            <a class="product-name" href="${p.url}">${safeName}</a>
             <div class="price-line">
-              <strong>${p.formatted_price}</strong>
-              ${p.formatted_original ? `<del>${p.formatted_original}</del>` : ''}
+              <strong>${escapeHtml(p.formatted_price)}</strong>
+              ${p.formatted_original ? `<del>${escapeHtml(p.formatted_original)}</del>` : ''}
             </div>
             <div class="rating">★ ${Number(p.rating || 0).toFixed(1)} <span>(${p.review_count})</span></div>
             <form action="/gio-hang/them/${p.id}" method="post">
