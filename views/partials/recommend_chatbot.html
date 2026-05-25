@@ -123,75 +123,57 @@
   border-bottom-right-radius: 4px;
 }
 
-.tw-products-scroll {
-  display: flex;
+.tw-products-list {
+  display: grid;
   gap: 8px;
-  overflow-x: auto;
   padding: 4px 0 2px;
-  scrollbar-width: none;
 }
-.tw-products-scroll::-webkit-scrollbar { display: none; }
 
 .tw-prod-card {
-  flex-shrink: 0;
-  width: 130px;
+  width: 100%;
   background: #fff;
   border: 1px solid #dce5ec;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
   text-decoration: none;
   color: inherit;
-  transition: box-shadow .15s;
-  display: block;
-}
-.tw-prod-card:hover { box-shadow: 0 4px 14px rgba(23,32,42,.12); }
-.tw-prod-img {
-  height: 80px;
-  min-height: 80px;
-  background: linear-gradient(135deg, #eef4f8, #d3e9e7);
+  transition: border-color .15s, box-shadow .15s, transform .15s;
   display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 9px 10px;
+}
+.tw-prod-card:hover {
+  border-color: #0f766e;
+  box-shadow: 0 4px 14px rgba(23,32,42,.12);
+  transform: translateY(-1px);
+}
+.tw-prod-index {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: #e7f2f1;
+  color: #0f766e;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-  position: relative;
-}
-.tw-prod-img img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-.tw-prod-img .tw-prod-fallback {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  font-size: 12px;
   font-weight: 800;
-  background: #12343b;
-  color: #fff;
-  width: 44px;
-  height: 44px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  line-height: 1;
+  flex-shrink: 0;
 }
-.tw-prod-body { padding: 7px 8px; }
+.tw-prod-body { min-width: 0; }
 .tw-prod-name {
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.35;
   color: #17202a;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: 28px;
 }
 .tw-prod-price {
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 800;
   color: #d92d20;
   margin-top: 4px;
@@ -399,25 +381,17 @@
 
     // Danh sách sản phẩm
     if (products && products.length) {
-      const scrollDiv = document.createElement('div');
-      scrollDiv.className = 'tw-products-scroll';
-      products.forEach(p => {
+      const listDiv = document.createElement('div');
+      listDiv.className = 'tw-products-list';
+      products.forEach((p, index) => {
         const card = document.createElement('a');
         const name = String(p.name || '');
         const safeName = escapeHtml(name);
-        const safeAttrName = escapeAttr(name);
-        const initialsText = (name || 'TW').substring(0,2).toUpperCase();
-        const initials = escapeHtml(initialsText);
-        const safeImageUrl = escapeAttr(p.image_url || '');
+        const safeUrl = escapeAttr(p.url || '/san-pham');
         card.className = 'tw-prod-card';
-        card.href = p.url;
+        card.href = safeUrl;
         card.innerHTML = `
-          <div class="tw-prod-img">
-            ${safeImageUrl
-              ? `<img src="${safeImageUrl}" alt="${safeAttrName}" loading="lazy">`
-              : `<span class="tw-prod-fallback">${initials}</span>`
-            }
-          </div>
+          <span class="tw-prod-index">${index + 1}</span>
           <div class="tw-prod-body">
             <div class="tw-prod-name">${safeName}</div>
             <div class="tw-prod-price">
@@ -425,23 +399,9 @@
               ${p.discount > 0 ? `<span class="tw-prod-discount">-${p.discount}%</span>` : ''}
             </div>
           </div>`;
-        const img = card.querySelector('img');
-        if (img) {
-          img.addEventListener('error', () => {
-            const imageWrap = img.closest('.tw-prod-img');
-            const fallback = document.createElement('span');
-            fallback.className = 'tw-prod-fallback';
-            fallback.textContent = initialsText;
-            if (imageWrap) {
-              imageWrap.replaceChildren(fallback);
-            } else {
-              img.replaceWith(fallback);
-            }
-          }, { once: true });
-        }
-        scrollDiv.appendChild(card);
+        listDiv.appendChild(card);
       });
-      messages.appendChild(scrollDiv);
+      messages.appendChild(listDiv);
 
       if (actionUrl) {
         const link = document.createElement('a');
