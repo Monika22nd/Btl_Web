@@ -344,20 +344,21 @@ def _extract_price_range(text: str):
     text = text.lower()
     plain_text = _remove_accent(text)
     searchable = (text, plain_text)
+    unit = r"(triệu|trieu|tr|m\b)"
     # dưới X triệu
-    m = next((match for value in searchable if (match := re.search(r"(dưới|duoi)\s+(\d+)\s*(triệu|trieu|tr|m\b)", value))), None)
+    m = next((match for value in searchable if (match := re.search(r"(dưới|duoi|không quá|khong qua|<=|=<|tối đa|toi da)\s*(\d+)\s*" + unit, value))), None)
     if m:
         return None, int(m.group(2)) * 1_000_000
     # X-Y triệu
-    m = next((match for value in searchable if (match := re.search(r"(\d+)\s*[-–]\s*(\d+)\s*(triệu|trieu|tr|m\b)", value))), None)
+    m = next((match for value in searchable if (match := re.search(r"(\d+)\s*[-–]\s*(\d+)\s*" + unit, value))), None)
     if m:
         return int(m.group(1)) * 1_000_000, int(m.group(2)) * 1_000_000
     # trên X triệu
-    m = next((match for value in searchable if (match := re.search(r"(trên|tren)\s+(\d+)\s*(triệu|trieu|tr|m\b)", value))), None)
+    m = next((match for value in searchable if (match := re.search(r"(trên|tren|từ|tu|hơn|hon|>=|=>|ít nhất|it nhat|tối thiểu|toi thieu)\s*(\d+)\s*" + unit, value))), None)
     if m:
         return int(m.group(2)) * 1_000_000, None
     # tầm X triệu
-    m = next((match for value in searchable if (match := re.search(r"(tầm|tam)\s+(\d+)\s*(triệu|trieu|tr|m\b)", value))), None)
+    m = next((match for value in searchable if (match := re.search(r"(tầm|tam|khoảng|khoang)\s+(\d+)\s*" + unit, value))), None)
     if m:
         val = int(m.group(2)) * 1_000_000
         return int(val * 0.8), int(val * 1.2)
@@ -467,8 +468,19 @@ def chat_recommend(
         "tv": "TV", "phu-kien-dt": "phụ kiện điện thoại",
         "phu-kien-pc": "phụ kiện máy tính", "man-hinh": "màn hình",
     }
+    price_label = ""
+    price_params = []
+    if min_price and max_price:
+        price_label = f"tầm {min_price//1_000_000}–{max_price//1_000_000} triệu"
+        price_params = [f"min_price={min_price}", f"max_price={max_price}"]
+    elif max_price:
+        price_label = f"dưới {max_price//1_000_000} triệu"
+        price_params = [f"max_price={max_price}"]
+    elif min_price:
+        price_label = f"trên {min_price//1_000_000} triệu"
+        price_params = [f"min_price={min_price}"]
 
-    if "recommend" in intents and not cat_slug and not brand_slug:
+    if "recommend" in intents and not cat_slug and not brand_slug and min_price is None and max_price is None:
         if user_id:
             reply = "Dựa trên lịch sử mua sắm của bạn, đây là những sản phẩm bạn có thể thích 👇"
             products = personalised(db, user_id, limit=limit)
@@ -503,12 +515,27 @@ def chat_recommend(
             reply = f"Hiện chưa có {cat_label}{extras} phù hợp. Đây là một số gợi ý khác:"
             products = trending_products(db, limit=limit)
         action_url = f"/danh-muc/{cat_slug}"
+        if price_params:
+            action_url = "/san-pham?" + "&".join([f"category={cat_slug}"] + price_params)
     elif brand_slug:
         if products:
-            reply = f"Sản phẩm {brand_slug.title()} nổi bật tại TechWorld 👇"
+            price_extra = f" {price_label}" if price_label else ""
+            reply = f"Sản phẩm {brand_slug.title()}{price_extra} nổi bật tại TechWorld 👇"
         else:
-            reply = f"Không tìm thấy sản phẩm {brand_slug.title()} phù hợp. Đây là gợi ý khác:"
+            price_extra = f" {price_label}" if price_label else ""
+            reply = f"Không tìm thấy sản phẩm {brand_slug.title()}{price_extra} phù hợp. Đây là gợi ý khác:"
         action_url = f"/san-pham?brand={brand_slug}"
+        if price_params:
+            action_url += "&" + "&".join(price_params)
+    elif min_price is not None or max_price is not None:
+        if products and not used_fallback:
+            reply = f"Tôi tìm thấy **{len(products)}** sản phẩm {price_label} phù hợp cho bạn 👇"
+        else:
+            reply = f"Hiện chưa có sản phẩm {price_label} phù hợp. Đây là một số gợi ý khác:"
+            products = trending_products(db, limit=limit)
+        action_url = "/san-pham"
+        if price_params:
+            action_url += "?" + "&".join(price_params)
     elif "trending" in intents:
         reply = "Đây là những sản phẩm đang bán chạy nhất tuần này 🔥"
         products = trending_products(db, limit=limit)
