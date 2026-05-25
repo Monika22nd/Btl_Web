@@ -339,29 +339,105 @@ def _remove_accent(s: str) -> str:
     return without_marks.replace("đ", "d").replace("Đ", "D")
 
 
+def _parse_price_value(raw_value: str, raw_unit: str = "") -> Optional[int]:
+    """Chuyển '500k', '1.5 triệu', '2 tỷ', '12000000' sang VND."""
+    value_text = (raw_value or "").strip().lower().replace(",", ".")
+    unit = _remove_accent(raw_unit or "").strip().lower()
+    if not value_text:
+        return None
+
+    compact_number = re.fullmatch(r"\d{1,3}(?:\.\d{3})+", value_text)
+    if compact_number:
+        number = float(value_text.replace(".", ""))
+    else:
+        try:
+            number = float(value_text)
+        except ValueError:
+            digits = re.sub(r"\D", "", value_text)
+            if not digits:
+                return None
+            number = float(digits)
+
+    if unit in {"k", "nghin", "ngan"}:
+        return int(number * 1_000)
+    if unit in {"tr", "trieu", "m"}:
+        return int(number * 1_000_000)
+    if unit in {"ty", "ti"}:
+        return int(number * 1_000_000_000)
+
+    # Không có đơn vị: số lớn được hiểu là VND, số nhỏ thường là triệu.
+    if number >= 100_000:
+        return int(number)
+    if number >= 1:
+        return int(number * 1_000_000)
+    return None
+
+
+def _format_price_vnd(amount: int) -> str:
+    """Hiển thị giá gọn cho câu trả lời chatbot."""
+    def compact(value: float) -> str:
+        text = f"{value:.1f}".rstrip("0").rstrip(".")
+        return text.replace(".", ",")
+
+    if amount >= 1_000_000_000 and amount % 1_000_000_000 == 0:
+        return f"{amount // 1_000_000_000} tỷ"
+    if amount >= 1_000_000_000:
+        return f"{compact(amount / 1_000_000_000)} tỷ"
+    if amount >= 1_000_000 and amount % 1_000_000 == 0:
+        return f"{amount // 1_000_000} triệu"
+    if amount >= 1_000_000:
+        return f"{compact(amount / 1_000_000)} triệu"
+    if amount >= 1_000 and amount % 1_000 == 0 and amount < 1_000_000:
+        return f"{amount // 1_000} nghìn"
+    return f"{amount:,}đ".replace(",", ".")
+
+
 def _extract_price_range(text: str):
-    """Trích xuất khoảng giá từ câu hỏi, VD: 'dưới 10 triệu', '5-10 triệu'."""
+    """Trích xuất khoảng giá: dưới/trên/tầm, k/nghìn/triệu/tỷ hoặc số VND đầy đủ."""
     text = text.lower()
     plain_text = _remove_accent(text)
     searchable = (text, plain_text)
-    unit = r"(triệu|trieu|tr|m\b)"
-    # dưới X triệu
-    m = next((match for value in searchable if (match := re.search(r"(dưới|duoi|không quá|khong qua|<=|=<|tối đa|toi da)\s*(\d+)\s*" + unit, value))), None)
-    if m:
-        return None, int(m.group(2)) * 1_000_000
-    # X-Y triệu
-    m = next((match for value in searchable if (match := re.search(r"(\d+)\s*[-–]\s*(\d+)\s*" + unit, value))), None)
-    if m:
-        return int(m.group(1)) * 1_000_000, int(m.group(2)) * 1_000_000
-    # trên X triệu
-    m = next((match for value in searchable if (match := re.search(r"(trên|tren|từ|tu|hơn|hon|>=|=>|ít nhất|it nhat|tối thiểu|toi thieu)\s*(\d+)\s*" + unit, value))), None)
-    if m:
-        return int(m.group(2)) * 1_000_000, None
-    # tầm X triệu
-    m = next((match for value in searchable if (match := re.search(r"(tầm|tam|khoảng|khoang)\s+(\d+)\s*" + unit, value))), None)
-    if m:
-        val = int(m.group(2)) * 1_000_000
-        return int(val * 0.8), int(val * 1.2)
+    number = r"(\d+(?:[\.,]\d+)*)"
+    unit = r"(k|nghìn|nghin|ngàn|ngan|triệu|trieu|tr|m\b|tỷ|ty|tỉ|ti|đ|d|vnd)?"
+
+    def parse(value, unit_value=""):
+        return _parse_price_value(value, unit_value)
+
+    # X đến Y đơn vị, X-Y đơn vị, hoặc từ X đến Y đơn vị.
+    range_pattern = number + r"\s*(?:" + unit + r")?\s*(?:-|–|đến|den|tới|toi)\s*" + number + r"\s*" + unit
+    for value in searchable:
+        m = re.search(range_pattern, value)
+        if m:
+            shared_unit = m.group(4) or m.group(2) or ""
+            low = parse(m.group(1), m.group(2) or shared_unit)
+            high = parse(m.group(3), shared_unit)
+            if low is not None and high is not None:
+                return min(low, high), max(low, high)
+
+    under = r"(dưới|duoi|không quá|khong qua|<=|=<|tối đa|toi da)\s*" + number + r"\s*" + unit
+    for value in searchable:
+        m = re.search(under, value)
+        if m:
+            high = parse(m.group(2), m.group(3) or "")
+            if high is not None:
+                return None, high
+
+    over = r"(trên|tren|từ|tu|hơn|hon|>=|=>|ít nhất|it nhat|tối thiểu|toi thieu)\s*" + number + r"\s*" + unit
+    for value in searchable:
+        m = re.search(over, value)
+        if m:
+            low = parse(m.group(2), m.group(3) or "")
+            if low is not None:
+                return low, None
+
+    around = r"(tầm|tam|khoảng|khoang)\s*" + number + r"\s*" + unit
+    for value in searchable:
+        m = re.search(around, value)
+        if m:
+            val = parse(m.group(2), m.group(3) or "")
+            if val is not None:
+                return int(val * 0.8), int(val * 1.2)
+
     return None, None
 
 
@@ -471,13 +547,13 @@ def chat_recommend(
     price_label = ""
     price_params = []
     if min_price and max_price:
-        price_label = f"tầm {min_price//1_000_000}–{max_price//1_000_000} triệu"
+        price_label = f"tầm {_format_price_vnd(min_price)}–{_format_price_vnd(max_price)}"
         price_params = [f"min_price={min_price}", f"max_price={max_price}"]
     elif max_price:
-        price_label = f"dưới {max_price//1_000_000} triệu"
+        price_label = f"dưới {_format_price_vnd(max_price)}"
         price_params = [f"max_price={max_price}"]
     elif min_price:
-        price_label = f"trên {min_price//1_000_000} triệu"
+        price_label = f"trên {_format_price_vnd(min_price)}"
         price_params = [f"min_price={min_price}"]
 
     if "recommend" in intents and not cat_slug and not brand_slug and min_price is None and max_price is None:
@@ -494,11 +570,11 @@ def chat_recommend(
         if min_price or max_price:
             range_str = ""
             if min_price and max_price:
-                range_str = f" tầm {min_price//1_000_000}–{max_price//1_000_000} triệu"
+                range_str = f" tầm {_format_price_vnd(min_price)}–{_format_price_vnd(max_price)}"
             elif max_price:
-                range_str = f" dưới {max_price//1_000_000} triệu"
+                range_str = f" dưới {_format_price_vnd(max_price)}"
             elif min_price:
-                range_str = f" trên {min_price//1_000_000} triệu"
+                range_str = f" trên {_format_price_vnd(min_price)}"
             extras += range_str
         if "cheap" in intents:
             extras += " giá tốt nhất"
