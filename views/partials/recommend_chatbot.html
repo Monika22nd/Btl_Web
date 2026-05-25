@@ -1,0 +1,555 @@
+<!-- ═══════════════════════════════════════════════════════
+     TechWorld AI Chat Widget — Rule-based Recommendation Bot
+     Nhúng trước thẻ </body> trong base.html
+     ═══════════════════════════════════════════════════════ -->
+<style>
+#tw-chat-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #0f766e;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 4px 16px rgba(15,118,110,.35);
+  transition: transform .2s, box-shadow .2s;
+}
+#tw-chat-btn:hover { transform: scale(1.08); box-shadow: 0 6px 22px rgba(15,118,110,.45); }
+#tw-chat-btn .badge-dot {
+  position: absolute;
+  top: 2px; right: 2px;
+  width: 12px; height: 12px;
+  background: #ffb020;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+
+#tw-chat-panel {
+  position: fixed;
+  bottom: 90px;
+  right: 24px;
+  z-index: 999;
+  width: 370px;
+  max-height: 580px;
+  background: #fff;
+  border: 1px solid #dce5ec;
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(23,32,42,.14);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform-origin: bottom right;
+  transform: scale(0.92) translateY(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .22s cubic-bezier(.34,1.56,.64,1), opacity .18s ease;
+}
+#tw-chat-panel.open {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tw-chat-header {
+  background: #12343b;
+  color: #fff;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.tw-chat-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: #ffb020;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  color: #111;
+  flex-shrink: 0;
+}
+.tw-chat-header-info { flex: 1; min-width: 0; }
+.tw-chat-header-info strong { font-size: 14px; display: block; }
+.tw-chat-header-info span { font-size: 12px; color: #a8d5cf; }
+.tw-close-btn {
+  background: none; border: none; color: rgba(255,255,255,.7);
+  cursor: pointer; font-size: 18px; padding: 4px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.tw-close-btn:hover { color: #fff; }
+
+.tw-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scroll-behavior: smooth;
+}
+.tw-messages::-webkit-scrollbar { width: 4px; }
+.tw-messages::-webkit-scrollbar-thumb { background: #dce5ec; border-radius: 99px; }
+
+.tw-msg {
+  max-width: 85%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+.tw-msg.bot {
+  background: #f0f7f6;
+  color: #17202a;
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+.tw-msg.user {
+  background: #0f766e;
+  color: #fff;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+
+.tw-products-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0 2px;
+  scrollbar-width: none;
+}
+.tw-products-scroll::-webkit-scrollbar { display: none; }
+
+.tw-prod-card {
+  flex-shrink: 0;
+  width: 130px;
+  background: #fff;
+  border: 1px solid #dce5ec;
+  border-radius: 8px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow .15s;
+  display: block;
+}
+.tw-prod-card:hover { box-shadow: 0 4px 14px rgba(23,32,42,.12); }
+.tw-prod-img {
+  height: 80px;
+  background: linear-gradient(135deg, #eef4f8, #d3e9e7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.tw-prod-img img { width: 100%; height: 100%; object-fit: contain; }
+.tw-prod-img span {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0b3430;
+  background: #12343b;
+  color: #fff;
+  width: 44px; height: 44px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.tw-prod-body { padding: 7px 8px; }
+.tw-prod-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #17202a;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 28px;
+}
+.tw-prod-price {
+  font-size: 12px;
+  font-weight: 800;
+  color: #d92d20;
+  margin-top: 4px;
+}
+.tw-prod-discount {
+  font-size: 10px;
+  background: #d92d20;
+  color: #fff;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 4px;
+}
+
+.tw-quick-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+.tw-quick-btn {
+  padding: 5px 10px;
+  border: 1px solid #0f766e;
+  border-radius: 99px;
+  background: none;
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.tw-quick-btn:hover { background: #0f766e; color: #fff; }
+
+.tw-see-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #0f766e;
+  font-weight: 700;
+  text-decoration: none;
+  margin-top: 4px;
+  padding: 4px 0;
+}
+.tw-see-more:hover { text-decoration: underline; }
+
+.tw-typing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 12px;
+  background: #f0f7f6;
+  border-radius: 12px;
+  border-bottom-left-radius: 4px;
+  align-self: flex-start;
+}
+.tw-typing span {
+  width: 6px; height: 6px;
+  background: #0f766e;
+  border-radius: 50%;
+  animation: tw-bounce 1.2s infinite;
+}
+.tw-typing span:nth-child(2) { animation-delay: .2s; }
+.tw-typing span:nth-child(3) { animation-delay: .4s; }
+@keyframes tw-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: .5; }
+  30% { transform: translateY(-5px); opacity: 1; }
+}
+
+.tw-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid #dce5ec;
+  background: #fff;
+  flex-shrink: 0;
+}
+.tw-input-row input {
+  flex: 1;
+  border: 1px solid #dce5ec;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: #17202a;
+  background: #f4f7fb;
+  outline: none;
+  width: auto;
+}
+.tw-input-row input:focus { border-color: #0f766e; background: #fff; }
+.tw-send-btn {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: #0f766e;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background .15s;
+}
+.tw-send-btn:hover { background: #0b5d56; }
+.tw-send-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.tw-welcome-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+@media (max-width: 480px) {
+  #tw-chat-panel { width: calc(100vw - 32px); right: 16px; bottom: 80px; }
+}
+</style>
+
+<!-- Toggle button -->
+<button id="tw-chat-btn" aria-label="Mở trợ lý mua sắm">
+  🛍️
+  <span class="badge-dot"></span>
+</button>
+
+<!-- Chat panel -->
+<div id="tw-chat-panel" role="dialog" aria-label="Trợ lý mua sắm TechWorld">
+  <div class="tw-chat-header">
+    <div class="tw-chat-avatar">TW</div>
+    <div class="tw-chat-header-info">
+      <strong>Trợ lý TechWorld</strong>
+      <span>● Đang hoạt động</span>
+    </div>
+    <button class="tw-close-btn" id="tw-close-btn" aria-label="Đóng">✕</button>
+  </div>
+
+  <div class="tw-messages" id="tw-messages"></div>
+
+  <div class="tw-input-row">
+    <input type="text" id="tw-input"
+           placeholder="Hỏi tôi về sản phẩm..."
+           maxlength="200"
+           autocomplete="off">
+    <button class="tw-send-btn" id="tw-send-btn" aria-label="Gửi">➤</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  const panel    = document.getElementById('tw-chat-panel');
+  const messages = document.getElementById('tw-messages');
+  const input    = document.getElementById('tw-input');
+  const sendBtn  = document.getElementById('tw-send-btn');
+  const openBtn  = document.getElementById('tw-chat-btn');
+  const closeBtn = document.getElementById('tw-close-btn');
+
+  // Lấy user_id từ session nếu có (được inject bởi Jinja)
+  const userId = (typeof USER_ID !== 'undefined' && USER_ID) ? USER_ID : null;
+
+  let isOpen = false;
+  let hasOpened = false;
+
+  function togglePanel() {
+    isOpen = !isOpen;
+    panel.classList.toggle('open', isOpen);
+    if (isOpen && !hasOpened) {
+      hasOpened = true;
+      greet();
+    }
+    if (isOpen) input.focus();
+  }
+
+  openBtn.addEventListener('click', togglePanel);
+  closeBtn.addEventListener('click', togglePanel);
+
+  // Đóng khi click bên ngoài
+  document.addEventListener('click', (e) => {
+    if (isOpen && !panel.contains(e.target) && e.target !== openBtn) {
+      isOpen = false;
+      panel.classList.remove('open');
+    }
+  });
+
+  // ── Render helpers ──────────────────────────────────────────────────────────
+
+  function appendMsg(html, cls) {
+    const div = document.createElement('div');
+    div.className = 'tw-msg ' + cls;
+    div.innerHTML = html;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+    return div;
+  }
+
+  function appendBotBlock(reply, products, actionUrl) {
+    // Text reply (parse **bold** và *italic* đơn giản)
+    const formatted = reply
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>');
+
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'tw-msg bot';
+    msgDiv.innerHTML = formatted;
+    messages.appendChild(msgDiv);
+
+    // Danh sách sản phẩm
+    if (products && products.length) {
+      const scrollDiv = document.createElement('div');
+      scrollDiv.className = 'tw-products-scroll';
+      products.forEach(p => {
+        const card = document.createElement('a');
+        card.className = 'tw-prod-card';
+        card.href = p.url;
+        card.innerHTML = `
+          <div class="tw-prod-img">
+            ${p.image_url
+              ? `<img src="${p.image_url}" alt="${p.name}" loading="lazy">`
+              : `<span>${p.name.substring(0,2).toUpperCase()}</span>`
+            }
+          </div>
+          <div class="tw-prod-body">
+            <div class="tw-prod-name">${p.name}</div>
+            <div class="tw-prod-price">
+              ${p.formatted_price}
+              ${p.discount > 0 ? `<span class="tw-prod-discount">-${p.discount}%</span>` : ''}
+            </div>
+          </div>`;
+        scrollDiv.appendChild(card);
+      });
+      messages.appendChild(scrollDiv);
+
+      if (actionUrl) {
+        const link = document.createElement('a');
+        link.className = 'tw-see-more';
+        link.href = actionUrl;
+        link.textContent = '→ Xem thêm sản phẩm';
+        messages.appendChild(link);
+      }
+    }
+
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function showTyping() {
+    const el = document.createElement('div');
+    el.className = 'tw-typing';
+    el.id = 'tw-typing';
+    el.innerHTML = '<span></span><span></span><span></span>';
+    messages.appendChild(el);
+    messages.scrollTop = messages.scrollHeight;
+    return el;
+  }
+
+  function removeTyping() {
+    const el = document.getElementById('tw-typing');
+    if (el) el.remove();
+  }
+
+  function appendQuickButtons(buttons) {
+    const wrap = document.createElement('div');
+    wrap.className = 'tw-quick-btns';
+    buttons.forEach(label => {
+      const btn = document.createElement('button');
+      btn.className = 'tw-quick-btn';
+      btn.textContent = label;
+      btn.addEventListener('click', () => send(label));
+      wrap.appendChild(btn);
+    });
+    messages.appendChild(wrap);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  // ── Chào mừng ban đầu ───────────────────────────────────────────────────────
+
+  function greet() {
+    setTimeout(() => {
+      appendBotBlock(
+        'Xin chào! Tôi là **Trợ lý TechWorld** 🛍️\nTôi sẽ giúp bạn tìm sản phẩm phù hợp!\nBạn đang tìm kiếm gì?',
+        [], null
+      );
+      appendQuickButtons([
+        '📱 Điện thoại hot', '💻 Laptop tốt', '🔥 Đang giảm giá',
+        '🎧 Tai nghe', '⭐ Gợi ý cho tôi',
+      ]);
+    }, 300);
+  }
+
+  // ── Gửi tin nhắn ────────────────────────────────────────────────────────────
+
+  async function send(text) {
+    text = (text || input.value).trim();
+    if (!text) return;
+
+    input.value = '';
+    sendBtn.disabled = true;
+    appendMsg(escapeHtml(text), 'user');
+
+    const typing = showTyping();
+
+    try {
+      const res = await fetch('/api/recommend/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, user_id: userId }),
+      });
+
+      removeTyping();
+
+      if (!res.ok) throw new Error('Server error');
+      const data = await res.json();
+
+      appendBotBlock(data.reply || '...', data.products || [], data.action_url || null);
+
+      // Gợi ý câu hỏi tiếp theo dựa trên sản phẩm
+      if (data.products && data.products.length) {
+        const cat = data.products[0].category_slug;
+        const followUps = _followUpSuggestions(cat);
+        if (followUps.length) {
+          setTimeout(() => appendQuickButtons(followUps), 400);
+        }
+      }
+
+    } catch (err) {
+      removeTyping();
+      appendBotBlock('Xin lỗi, có lỗi kết nối. Vui lòng thử lại! 😅', [], null);
+    }
+
+    sendBtn.disabled = false;
+    input.focus();
+  }
+
+  function _followUpSuggestions(categorySlug) {
+    const map = {
+      'dien-thoai': ['📱 iPhone mới nhất', '📱 Samsung flagship', '💰 Dưới 10 triệu'],
+      'laptop':     ['💻 MacBook', '💻 Laptop gaming', '💻 Dưới 20 triệu'],
+      'tai-nghe':   ['🎧 Chống ồn tốt nhất', '🎧 AirPods Pro', '🎧 Dưới 2 triệu'],
+      'tv':         ['📺 LG 4K', '📺 Samsung QLED', '📺 Dưới 15 triệu'],
+    };
+    return map[categorySlug] || ['🔥 Bán chạy nhất', '💸 Đang giảm giá', '⭐ Gợi ý cho tôi'];
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Event listeners ─────────────────────────────────────────────────────────
+
+  sendBtn.addEventListener('click', () => send());
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+
+  // Auto-open sau 8 giây nếu chưa mở (chỉ 1 lần / session)
+  if (!sessionStorage.getItem('tw_chat_opened')) {
+    setTimeout(() => {
+      if (!isOpen) {
+        sessionStorage.setItem('tw_chat_opened', '1');
+        // Chỉ rung nhẹ nút, không auto-open để không làm phiền
+        openBtn.style.animation = 'tw-shake .5s ease 3';
+      }
+    }, 8000);
+  }
+})();
+</script>
+
+<style>
+@keyframes tw-shake {
+  0%, 100% { transform: scale(1); }
+  25%       { transform: scale(1.15) rotate(-8deg); }
+  75%       { transform: scale(1.15) rotate(8deg); }
+}
+</style>

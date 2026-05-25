@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+from controllers.recommend_controller import router as recommend_router
 
 from config import (
     APP_NAME, APP_DESCRIPTION, APP_VERSION,
@@ -78,7 +79,7 @@ app.include_router(cart_router)
 app.include_router(order_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
-
+app.include_router(recommend_router)
 
 # ── Custom 404 handler ────────────────────────────────────────────────────────
 @app.exception_handler(404)
