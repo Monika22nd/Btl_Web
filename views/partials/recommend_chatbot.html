@@ -147,25 +147,36 @@
 .tw-prod-card:hover { box-shadow: 0 4px 14px rgba(23,32,42,.12); }
 .tw-prod-img {
   height: 80px;
+  min-height: 80px;
   background: linear-gradient(135deg, #eef4f8, #d3e9e7);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  position: relative;
 }
-.tw-prod-img img { width: 100%; height: 100%; object-fit: contain; }
-.tw-prod-img span {
-  font-size: 28px;
+.tw-prod-img img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.tw-prod-img .tw-prod-fallback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   font-weight: 800;
-  color: #0b3430;
   background: #12343b;
   color: #fff;
-  width: 44px; height: 44px;
+  width: 44px;
+  height: 44px;
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
+  line-height: 1;
 }
 .tw-prod-body { padding: 7px 8px; }
 .tw-prod-name {
@@ -395,7 +406,8 @@
         const name = String(p.name || '');
         const safeName = escapeHtml(name);
         const safeAttrName = escapeAttr(name);
-        const initials = escapeHtml((name || 'TW').substring(0,2).toUpperCase());
+        const initialsText = (name || 'TW').substring(0,2).toUpperCase();
+        const initials = escapeHtml(initialsText);
         const safeImageUrl = escapeAttr(p.image_url || '');
         card.className = 'tw-prod-card';
         card.href = p.url;
@@ -403,7 +415,7 @@
           <div class="tw-prod-img">
             ${safeImageUrl
               ? `<img src="${safeImageUrl}" alt="${safeAttrName}" loading="lazy">`
-              : `<span>${initials}</span>`
+              : `<span class="tw-prod-fallback">${initials}</span>`
             }
           </div>
           <div class="tw-prod-body">
@@ -416,9 +428,15 @@
         const img = card.querySelector('img');
         if (img) {
           img.addEventListener('error', () => {
+            const imageWrap = img.closest('.tw-prod-img');
             const fallback = document.createElement('span');
-            fallback.textContent = initials;
-            img.replaceWith(fallback);
+            fallback.className = 'tw-prod-fallback';
+            fallback.textContent = initialsText;
+            if (imageWrap) {
+              imageWrap.replaceChildren(fallback);
+            } else {
+              img.replaceWith(fallback);
+            }
           }, { once: true });
         }
         scrollDiv.appendChild(card);
