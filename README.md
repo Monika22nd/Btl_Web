@@ -2,11 +2,9 @@
 
 TechWorld là website thương mại điện tử bán sản phẩm công nghệ, được xây dựng bằng FastAPI, Jinja2, SQLAlchemy và SQLite. Website mô phỏng quy trình mua hàng cơ bản gồm xem sản phẩm, tìm kiếm/lọc sản phẩm, đăng ký/đăng nhập, quản lý giỏ hàng, đặt hàng, gợi ý sản phẩm và quản trị dữ liệu.
 
-Repository GitHub: [Monika22nd/Btl_Web](https://github.com/Monika22nd/Btl_Web)
-
 ## Thông tin chung
 
-- Tên dự án: `Btl_Web`
+- Tên dự án: `TechWorld`
 - Chủ đề: website bán hàng công nghệ
 - Mô hình tổ chức code: MVC
 - Backend: FastAPI
