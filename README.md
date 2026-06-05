@@ -12,7 +12,7 @@ TechWorld là website thương mại điện tử bán sản phẩm công nghệ
 - ORM: SQLAlchemy
 - Database: SQLite
 - Frontend: HTML, CSS, JavaScript
-- Nguồn dữ liệu sản phẩm: file `products.json` từ Best Buy, import bằng `import_bestbuy.py`
+- Nguồn dữ liệu sản phẩm: file `products.json` từ Best Buy, tự động lọc/import bằng `import_bestbuy.py` khi chạy web lần đầu
 - Vị trí repo trên máy hiện tại: `C:\Users\ASUS\Documents\New project\Btl_Web`
 - URL chạy local mặc định: `http://127.0.0.1:8000`
 
@@ -67,15 +67,19 @@ User request -> Controller -> DAO -> Model/Database -> View -> HTML response
 
 ```text
 Btl_Web/
-├── main.py                         # Điểm khởi chạy ứng dụng FastAPI
+├── main.py                         # Điểm khởi chạy FastAPI, tự tạo DB và auto-import Best Buy lần đầu
 ├── config.py                       # Cấu hình ứng dụng, database, session, helper format
 ├── database.py                     # Kết nối SQLite và cấu hình SQLAlchemy
 ├── seed.py                         # Seed dữ liệu mẫu ban đầu
-├── import_bestbuy.py               # Import dữ liệu sản phẩm từ Best Buy/products.json
-├── products.json                   # Dữ liệu sản phẩm Best Buy
+├── import_bestbuy.py               # Lọc sản phẩm công nghệ từ Best Buy/products.json rồi import vào SQLite
+├── products.json                   # Dữ liệu Best Buy gốc, gồm nhiều ngành hàng khác nhau
 ├── recommender.py                  # Logic gợi ý/tư vấn sản phẩm
 ├── requirements.txt                # Danh sách thư viện Python cần cài
-├── dao/                            # DAO: truy vấn dữ liệu sản phẩm, user, giỏ hàng, đơn hàng
+├── dao/                            # DAO: tách phần truy cập dữ liệu khỏi controller
+│   ├── product_dao.py              # Truy vấn/lọc/phân trang sản phẩm, danh mục, thông số
+│   ├── user_dao.py                 # Truy vấn và cập nhật tài khoản người dùng
+│   ├── cart_dao.py                 # Truy vấn và cập nhật giỏ hàng
+│   └── order_dao.py                # Tạo đơn hàng, xem lịch sử, cập nhật trạng thái đơn
 ├── controllers/                    # Controller: router và xử lý nghiệp vụ
 │   ├── admin_controller.py         # Quản trị sản phẩm, danh mục, thương hiệu, đơn hàng, user
 │   ├── auth_controller.py          # Đăng ký, đăng nhập, đăng xuất, profile
@@ -153,6 +157,8 @@ python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Ở lần chạy đầu tiên, ứng dụng sẽ tự đọc `products.json`, lọc các sản phẩm công nghệ bằng `import_bestbuy.py`, rồi tạo database SQLite `techworld.db`. Vì vậy không cần chạy `python import_bestbuy.py` thủ công trước khi mở web.
+
+Nếu muốn tạo lại dữ liệu từ đầu, xoá file `techworld.db` rồi chạy lại lệnh trên. Ứng dụng sẽ tự import lại dữ liệu Best Buy.
 
 6. Mở trình duyệt:
 
