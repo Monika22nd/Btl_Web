@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from config import APP_NAME
 from database import get_db
-from models import User, CartItem
+from dao import cart_dao, order_dao, user_dao
 
 router = APIRouter()
 templates = Jinja2Templates(directory="views")
@@ -19,7 +19,7 @@ def _session_ctx(request: Request, db: Session) -> dict:
     user_name = request.session.get("user_name")
     cart_count = 0
     if user_id:
-        cart_count = db.query(CartItem).filter(CartItem.user_id == user_id).count()
+        cart_count = cart_dao.count_by_user(db, user_id)
     return {
         "user_id": user_id,
         "user_name": user_name,
@@ -71,7 +71,7 @@ def register(
             status_code=400,
         )
 
-    existing = db.query(User).filter(User.email == email.lower().strip()).first()
+    existing = user_dao.get_by_email(db, email)
     if existing:
         return templates.TemplateResponse(
             "register.html",
@@ -79,11 +79,7 @@ def register(
             status_code=400,
         )
 
-    user = User(full_name=full_name.strip(), email=email.lower().strip(), phone=phone.strip() or None)
-    user.set_password(password)
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    user = user_dao.create_user(db, full_name, email, password, phone)
 
     request.session["user_id"] = user.id
     request.session["user_name"] = user.full_name
@@ -115,7 +111,7 @@ def login(
     next: str = Form(default="/"),
     db: Session = Depends(get_db),
 ):
-    user = db.query(User).filter(User.email == email.lower().strip()).first()
+    user = user_dao.get_by_email(db, email)
 
     if not user or not user.verify_password(password):
         return templates.TemplateResponse(
@@ -148,7 +144,7 @@ async def api_login(request: Request, db: Session = Depends(get_db)):
     email = str(data.get("email", "")).lower().strip()
     password = str(data.get("password", ""))
 
-    user = db.query(User).filter(User.email == email).first()
+    user = user_dao.get_by_email(db, email)
     if not user or not user.verify_password(password):
         return JSONResponse(
             {"success": False, "message": "Email hoặc mật khẩu không đúng."},
@@ -190,17 +186,13 @@ async def api_register(request: Request, db: Session = Depends(get_db)):
             {"success": False, "message": "Mật khẩu phải có ít nhất 6 ký tự."},
             status_code=400,
         )
-    if db.query(User).filter(User.email == email).first():
+    if user_dao.get_by_email(db, email):
         return JSONResponse(
             {"success": False, "message": "Email này đã được đăng ký."},
             status_code=400,
         )
 
-    user = User(full_name=full_name, email=email, phone=phone or None)
-    user.set_password(password)
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    user = user_dao.create_user(db, full_name, email, password, phone)
 
     request.session["user_id"] = user.id
     request.session["user_name"] = user.full_name
@@ -239,13 +231,12 @@ def profile_page(request: Request, db: Session = Depends(get_db)):
     if not user_id:
         return RedirectResponse(url="/dang-nhap", status_code=303)
 
-    user = db.query(User).filter(User.id == user_id).first()
+    user = user_dao.get_by_id(db, user_id)
     if not user:
         request.session.clear()
         return RedirectResponse(url="/dang-nhap", status_code=303)
 
-    from models import Order
-    orders = db.query(Order).filter(Order.user_id == user_id).order_by(Order.created_at.desc()).all()
+    orders = order_dao.list_by_user(db, user_id)
     flash = request.session.pop("flash", None)
 
     return templates.TemplateResponse(
@@ -277,10 +268,9 @@ def profile_update(
     if not user_id:
         return RedirectResponse(url="/dang-nhap", status_code=303)
 
-    user = db.query(User).filter(User.id == user_id).first()
+    user = user_dao.get_by_id(db, user_id)
 
-    from models import Order
-    orders = db.query(Order).filter(Order.user_id == user_id).order_by(Order.created_at.desc()).all()
+    orders = order_dao.list_by_user(db, user_id)
 
     def error(msg):
         return templates.TemplateResponse(
@@ -305,10 +295,7 @@ def profile_update(
             return error("Mật khẩu mới xác nhận không khớp.")
         user.set_password(new_password)
 
-    user.full_name = full_name.strip()
-    user.phone = phone.strip() or None
-    user.address = address.strip() or None
-    db.commit()
+    user_dao.update_profile(db, user, full_name, phone, address)
 
     request.session["user_name"] = user.full_name
     request.session["flash"] = "Cập nhật thông tin thành công!"
