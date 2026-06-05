@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -15,24 +16,48 @@ from config import (
 )
 from database import create_tables, migrate_schema
 
+BESTBUY_IMPORT_MIN_PRODUCTS = 1000
+
+
+def bootstrap_data():
+    create_tables()
+    migrate_schema()
+
+    from database import SessionLocal
+    from models import Category, Product
+
+    db = SessionLocal()
+    try:
+        product_count = db.query(Product).count()
+        category_count = db.query(Category).count()
+    finally:
+        db.close()
+
+    if product_count >= BESTBUY_IMPORT_MIN_PRODUCTS:
+        return
+
+    from import_bestbuy import PRODUCTS_JSON, run_import
+
+    if Path(PRODUCTS_JSON).exists():
+        print("[startup] Best Buy data is missing or incomplete. Importing products.json...")
+        run_import()
+        return
+
+    if category_count == 0:
+        print("[startup] products.json not found. Seeding sample data instead...")
+        db = SessionLocal()
+        try:
+            from seed import run_seed
+            run_seed(db)
+        finally:
+            db.close()
+
 
 # ── Lifespan: runs once on startup ───────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. Create all DB tables (no-op if they already exist)
-    create_tables()
-    migrate_schema()
-
-    # 2. Seed sample data if the DB is empty
-    from database import SessionLocal
-    from models import Category
-    db = SessionLocal()
-    try:
-        if db.query(Category).count() == 0:
-            from seed import run_seed
-            run_seed(db)
-    finally:
-        db.close()
+    # Import filtered Best Buy tech products on first run
+    bootstrap_data()
 
     yield  # App runs here
 
