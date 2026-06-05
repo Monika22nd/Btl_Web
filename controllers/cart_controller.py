@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from config import APP_NAME
 from database import get_db
-from models import CartItem, Product
+from dao import cart_dao, product_dao
 
 router = APIRouter()
 templates = Jinja2Templates(directory="views")
@@ -15,7 +15,7 @@ def _session_ctx(request: Request, db: Session) -> dict:
     user_id = request.session.get("user_id")
     cart_count = 0
     if user_id:
-        cart_count = db.query(CartItem).filter(CartItem.user_id == user_id).count()
+        cart_count = cart_dao.count_by_user(db, user_id)
     return {
         "user_id": user_id,
         "user_name": request.session.get("user_name"),
@@ -33,8 +33,8 @@ def cart_page(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/dang-nhap", status_code=303)
 
     ctx = _session_ctx(request, db)
-    cart_items = db.query(CartItem).filter(CartItem.user_id == user_id).all()
-    cart_total = sum(item.product.price * item.quantity for item in cart_items)
+    cart_items = cart_dao.list_by_user(db, user_id)
+    cart_total = cart_dao.total(cart_items)
     flash = request.session.pop("flash", None)
 
     return templates.TemplateResponse(
@@ -55,21 +55,11 @@ def cart_add(
     if not user_id:
         return RedirectResponse(url="/dang-nhap", status_code=303)
 
-    product = db.query(Product).filter(Product.id == product_id).first()
+    product = product_dao.get_by_id(db, product_id)
     if not product:
         return RedirectResponse(url="/", status_code=303)
 
-    quantity = max(1, quantity)
-    existing = db.query(CartItem).filter(
-        CartItem.user_id == user_id, CartItem.product_id == product_id
-    ).first()
-
-    if existing:
-        existing.quantity = min(existing.quantity + quantity, product.stock)
-    else:
-        db.add(CartItem(user_id=user_id, product_id=product_id, quantity=min(quantity, product.stock)))
-
-    db.commit()
+    cart_dao.add_or_update_item(db, user_id, product, quantity)
     request.session["flash"] = f"Đã thêm '{product.name}' vào giỏ hàng!"
     # Redirect về trang trước (referer) hoặc trang sản phẩm
     referer = request.headers.get("referer", f"/san-pham/{product.slug}")
@@ -88,14 +78,14 @@ def cart_update(
     if not user_id:
         return RedirectResponse(url="/dang-nhap", status_code=303)
 
-    item = db.query(CartItem).filter(CartItem.id == item_id, CartItem.user_id == user_id).first()
+    item = cart_dao.get_item(db, item_id, user_id)
     if item:
         if quantity <= 0:
-            db.delete(item)
-            request.session["flash"] = f"Đã xoá '{item.product.name}' khỏi giỏ hàng."
+            product_name = item.product.name
+            cart_dao.remove_item(db, item)
+            request.session["flash"] = f"Đã xoá '{product_name}' khỏi giỏ hàng."
         else:
-            item.quantity = min(quantity, item.product.stock)
-        db.commit()
+            cart_dao.update_quantity(db, item, quantity)
 
     return RedirectResponse(url="/gio-hang", status_code=303)
 
@@ -107,11 +97,10 @@ def cart_remove(item_id: int, request: Request, db: Session = Depends(get_db)):
     if not user_id:
         return RedirectResponse(url="/dang-nhap", status_code=303)
 
-    item = db.query(CartItem).filter(CartItem.id == item_id, CartItem.user_id == user_id).first()
+    item = cart_dao.get_item(db, item_id, user_id)
     if item:
         request.session["flash"] = f"Đã xoá '{item.product.name}' khỏi giỏ hàng."
-        db.delete(item)
-        db.commit()
+        cart_dao.remove_item(db, item)
 
     return RedirectResponse(url="/gio-hang", status_code=303)
 
@@ -123,7 +112,6 @@ def cart_clear(request: Request, db: Session = Depends(get_db)):
     if not user_id:
         return RedirectResponse(url="/dang-nhap", status_code=303)
 
-    db.query(CartItem).filter(CartItem.user_id == user_id).delete()
-    db.commit()
+    cart_dao.clear_by_user(db, user_id)
     request.session["flash"] = "Đã xoá toàn bộ giỏ hàng."
     return RedirectResponse(url="/gio-hang", status_code=303)

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from config import APP_NAME
 from database import get_db
-from models import Order, OrderItem, CartItem, Product, User
+from dao import cart_dao, order_dao, user_dao
 from models.order import ORDER_STATUS
 
 router = APIRouter()
@@ -16,7 +16,7 @@ def _session_ctx(request: Request, db: Session) -> dict:
     user_id = request.session.get("user_id")
     cart_count = 0
     if user_id:
-        cart_count = db.query(CartItem).filter(CartItem.user_id == user_id).count()
+        cart_count = cart_dao.count_by_user(db, user_id)
     return {
         "user_id": user_id,
         "user_name": request.session.get("user_name"),
@@ -33,12 +33,12 @@ def checkout_page(request: Request, db: Session = Depends(get_db)):
     if not user_id:
         return RedirectResponse(url="/dang-nhap", status_code=303)
 
-    cart_items = db.query(CartItem).filter(CartItem.user_id == user_id).all()
+    cart_items = cart_dao.list_by_user(db, user_id)
     if not cart_items:
         return RedirectResponse(url="/gio-hang", status_code=303)
 
-    user = db.query(User).filter(User.id == user_id).first()
-    cart_total = sum(item.product.price * item.quantity for item in cart_items)
+    user = user_dao.get_by_id(db, user_id)
+    cart_total = cart_dao.total(cart_items)
 
     return templates.TemplateResponse("checkout.html", {
         "request": request,
@@ -64,14 +64,14 @@ def checkout_submit(
     if not user_id:
         return RedirectResponse(url="/dang-nhap", status_code=303)
 
-    cart_items = db.query(CartItem).filter(CartItem.user_id == user_id).all()
+    cart_items = cart_dao.list_by_user(db, user_id)
     if not cart_items:
         return RedirectResponse(url="/gio-hang", status_code=303)
 
     for item in cart_items:
         if item.product.stock < item.quantity:
-            cart_total = sum(i.product.price * i.quantity for i in cart_items)
-            user = db.query(User).filter(User.id == user_id).first()
+            cart_total = cart_dao.total(cart_items)
+            user = user_dao.get_by_id(db, user_id)
             return templates.TemplateResponse("checkout.html", {
                 "request": request,
                 **_session_ctx(request, db),
@@ -81,31 +81,15 @@ def checkout_submit(
                 "error": f"'{item.product.name}' chỉ còn {item.product.stock} trong kho.",
             }, status_code=400)
 
-    total = sum(item.product.price * item.quantity for item in cart_items)
-
-    order = Order(
+    order = order_dao.create_from_cart(
+        db,
         user_id=user_id,
-        total=total,
-        status="pending",
-        shipping_address=shipping_address.strip(),
-        phone=phone.strip(),
-        note=note.strip() or None,
-        recipient_name=recipient_name.strip(),
+        cart_items=cart_items,
+        recipient_name=recipient_name,
+        shipping_address=shipping_address,
+        phone=phone,
+        note=note,
     )
-    db.add(order)
-    db.flush()
-
-    for item in cart_items:
-        db.add(OrderItem(
-            order_id=order.id,
-            product_id=item.product_id,
-            quantity=item.quantity,
-            price=item.product.price,
-        ))
-        item.product.stock -= item.quantity
-
-    db.query(CartItem).filter(CartItem.user_id == user_id).delete()
-    db.commit()
 
     request.session["flash"] = f"Đặt hàng thành công! Mã đơn hàng: #{order.id}"
     return RedirectResponse(url=f"/don-hang/{order.id}", status_code=303)
@@ -118,12 +102,7 @@ def order_list(request: Request, db: Session = Depends(get_db)):
     if not user_id:
         return RedirectResponse(url="/dang-nhap", status_code=303)
 
-    orders = (
-        db.query(Order)
-        .filter(Order.user_id == user_id)
-        .order_by(Order.created_at.desc())
-        .all()
-    )
+    orders = order_dao.list_by_user(db, user_id)
     flash = request.session.pop("flash", None)
 
     return templates.TemplateResponse("orders.html", {
@@ -143,7 +122,7 @@ def order_detail(order_id: int, request: Request, db: Session = Depends(get_db))
         return RedirectResponse(url="/dang-nhap", status_code=303)
 
     ctx = _session_ctx(request, db)
-    order = db.query(Order).filter(Order.id == order_id).first()
+    order = order_dao.get_by_id(db, order_id)
     if not order:
         return templates.TemplateResponse("404.html", {"request": request, **ctx}, status_code=404)
 
@@ -151,7 +130,7 @@ def order_detail(order_id: int, request: Request, db: Session = Depends(get_db))
     if order.user_id != user_id and not is_admin:
         return templates.TemplateResponse("404.html", {"request": request, **ctx}, status_code=403)
 
-    items = db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+    items = order_dao.list_items(db, order_id)
     flash = request.session.pop("flash", None)
 
     return templates.TemplateResponse("order_detail.html", {
@@ -170,7 +149,7 @@ def order_cancel(order_id: int, request: Request, db: Session = Depends(get_db))
     if not user_id:
         return RedirectResponse(url="/dang-nhap", status_code=303)
 
-    order = db.query(Order).filter(Order.id == order_id, Order.user_id == user_id).first()
+    order = order_dao.get_by_user(db, order_id, user_id)
     if not order:
         return RedirectResponse(url="/don-hang", status_code=303)
 
@@ -178,13 +157,7 @@ def order_cancel(order_id: int, request: Request, db: Session = Depends(get_db))
         request.session["flash"] = "Chỉ có thể huỷ đơn hàng đang chờ xác nhận."
         return RedirectResponse(url=f"/don-hang/{order_id}", status_code=303)
 
-    for item in db.query(OrderItem).filter(OrderItem.order_id == order_id).all():
-        product = db.query(Product).filter(Product.id == item.product_id).first()
-        if product:
-            product.stock += item.quantity
-
-    order.status = "cancelled"
-    db.commit()
+    order_dao.cancel_order(db, order)
     request.session["flash"] = f"Đã huỷ đơn hàng #{order_id}."
     return RedirectResponse(url=f"/don-hang/{order_id}", status_code=303)
 
@@ -196,7 +169,7 @@ def order_confirm_received(order_id: int, request: Request, db: Session = Depend
     if not user_id:
         return RedirectResponse(url="/dang-nhap", status_code=303)
 
-    order = db.query(Order).filter(Order.id == order_id, Order.user_id == user_id).first()
+    order = order_dao.get_by_user(db, order_id, user_id)
     if not order:
         return RedirectResponse(url="/don-hang", status_code=303)
 
@@ -204,8 +177,7 @@ def order_confirm_received(order_id: int, request: Request, db: Session = Depend
         request.session["flash"] = "Chỉ có thể xác nhận khi đơn đang giao hoặc đã tới nơi."
         return RedirectResponse(url=f"/don-hang/{order_id}", status_code=303)
 
-    order.status = "delivered"
-    db.commit()
+    order_dao.update_status(db, order, "delivered")
     request.session["flash"] = f"Cảm ơn bạn! Đơn hàng #{order_id} đã hoàn tất."
     return RedirectResponse(url=f"/don-hang/{order_id}", status_code=303)
 
@@ -222,7 +194,7 @@ def order_complaint(
     if not user_id:
         return RedirectResponse(url="/dang-nhap", status_code=303)
 
-    order = db.query(Order).filter(Order.id == order_id, Order.user_id == user_id).first()
+    order = order_dao.get_by_user(db, order_id, user_id)
     if not order:
         return RedirectResponse(url="/don-hang", status_code=303)
 
@@ -230,8 +202,6 @@ def order_complaint(
         request.session["flash"] = "Chỉ có thể khiếu nại khi đơn đang giao, đã tới nơi hoặc đã nhận."
         return RedirectResponse(url=f"/don-hang/{order_id}", status_code=303)
 
-    order.status = "complaint"
-    order.note = ((order.note or "") + f"\nKhiếu nại: {reason} - {description}").strip()
-    db.commit()
+    order_dao.add_complaint(db, order, reason, description)
     request.session["flash"] = f"Đã ghi nhận khiếu nại cho đơn hàng #{order_id}."
     return RedirectResponse(url=f"/don-hang/{order_id}", status_code=303)
