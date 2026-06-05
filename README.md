@@ -20,11 +20,15 @@ TechWorld là website thương mại điện tử bán sản phẩm công nghệ
 
 Dự án sử dụng dữ liệu sản phẩm công nghệ từ Best Buy thông qua file `products.json`. Script `import_bestbuy.py` đọc dữ liệu Best Buy, lọc các nhóm sản phẩm công nghệ phù hợp, chuẩn hóa danh mục/thương hiệu/thông số, rồi lưu vào database SQLite.
 
+File `products.json` gốc có rất nhiều sản phẩm thuộc nhiều nhóm khác nhau, không chỉ đồ công nghệ. Dự án không import toàn bộ file này; `import_bestbuy.py` dùng các rule phân loại để chỉ lấy các nhóm phù hợp với website TechWorld như điện thoại, laptop, tablet, màn hình, tai nghe, phụ kiện và TV.
+
 Luồng import dữ liệu:
 
 ```text
 products.json -> import_bestbuy.py -> SQLite techworld.db -> Website TechWorld
 ```
+
+Khi chạy web lần đầu, nếu database chưa có dữ liệu Best Buy hoặc chỉ có dữ liệu mẫu, ứng dụng sẽ tự động chạy `import_bestbuy.py` để tạo `techworld.db`. Các lần chạy sau sẽ dùng lại database đã import, không import lại nếu số lượng sản phẩm đã đủ.
 
 Các nhóm dữ liệu chính sau khi import:
 
@@ -40,11 +44,12 @@ Dự án được tổ chức theo mô hình MVC để tách rõ dữ liệu, x�
 - Model: thư mục `models/`, định nghĩa các bảng dữ liệu như user, product, category, brand, cart và order.
 - View: thư mục `views/`, chứa template Jinja2 hiển thị giao diện người dùng và trang quản trị.
 - Controller: thư mục `controllers/`, chứa router FastAPI và logic xử lý request/response cho từng nhóm chức năng.
+- DAO: thư mục `dao/`, chứa các hàm truy cập dữ liệu cho sản phẩm, người dùng, giỏ hàng và đơn hàng.
 
 Luồng xử lý request:
 
 ```text
-User request -> Controller -> Model/Database -> View -> HTML response
+User request -> Controller -> DAO -> Model/Database -> View -> HTML response
 ```
 
 ## Chức năng chính
@@ -70,6 +75,7 @@ Btl_Web/
 ├── products.json                   # Dữ liệu sản phẩm Best Buy
 ├── recommender.py                  # Logic gợi ý/tư vấn sản phẩm
 ├── requirements.txt                # Danh sách thư viện Python cần cài
+├── dao/                            # DAO: truy vấn dữ liệu sản phẩm, user, giỏ hàng, đơn hàng
 ├── controllers/                    # Controller: router và xử lý nghiệp vụ
 │   ├── admin_controller.py         # Quản trị sản phẩm, danh mục, thương hiệu, đơn hàng, user
 │   ├── auth_controller.py          # Đăng ký, đăng nhập, đăng xuất, profile
@@ -134,11 +140,10 @@ Nếu PowerShell chặn script, chạy lệnh này một lần rồi kích hoạ
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-4. Cài thư viện và import dữ liệu Best Buy:
+4. Cài thư viện:
 
 ```powershell
 pip install -r requirements.txt
-python import_bestbuy.py
 ```
 
 5. Chạy web:
@@ -146,6 +151,8 @@ python import_bestbuy.py
 ```powershell
 python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
+
+Ở lần chạy đầu tiên, ứng dụng sẽ tự đọc `products.json`, lọc các sản phẩm công nghệ bằng `import_bestbuy.py`, rồi tạo database SQLite `techworld.db`. Vì vậy không cần chạy `python import_bestbuy.py` thủ công trước khi mở web.
 
 6. Mở trình duyệt:
 

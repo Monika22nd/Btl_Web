@@ -9,6 +9,11 @@ Cách dùng:
 
 import json, re, sys, os
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from database import SessionLocal, create_tables
 from models import Category, Brand, Product, ProductSpec, User, CartItem, Order, OrderItem
@@ -17,7 +22,8 @@ from models import Category, Brand, Product, ProductSpec, User, CartItem, Order,
 # CẤU HÌNH
 # ═══════════════════════════════════════════════════════════════════════════════
 
-PRODUCTS_JSON = "products.json"   # đổi tên file nếu cần
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PRODUCTS_JSON = os.path.join(BASE_DIR, "products.json")
 USD_TO_VND    = 25_000
 MAX_PRODUCTS  = None              # None = lấy tất cả
 
